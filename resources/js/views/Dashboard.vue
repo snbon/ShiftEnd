@@ -64,23 +64,23 @@
               :loading="loading"
               class="elevation-1"
             >
-              <template #item.report_date="{ item }">
+              <template v-slot:item.report_date="{ item }">
                 {{ formatDate(item.report_date) }}
               </template>
-              <template #item.total_sales="{ item }">
+              <template v-slot:item.total_sales="{ item }">
                 ${{ formatCurrency(item.total_sales) }}
               </template>
-              <template #item.total_tips="{ item }">
+              <template v-slot:item.total_tips="{ item }">
                 ${{ formatCurrency(item.total_tips) }}
               </template>
-              <template #item.status="{ item }">
+              <template v-slot:item.status="{ item }">
                 <v-chip
                   :color="getStatusColor(item.status)"
                   :text="item.status"
                   size="small"
                 />
               </template>
-              <template #item.actions="{ item }">
+              <template v-slot:item.actions="{ item }">
                 <v-btn
                   icon="mdi-eye"
                   size="small"
@@ -211,6 +211,10 @@ const viewReport = (id) => {
 
 const editReport = (id) => {
   router.push(`/reports/${id}/edit`);
+};
+
+const logout = () => {
+  // Implement logout functionality
 };
 
 onMounted(() => {

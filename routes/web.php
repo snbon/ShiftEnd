@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\InvitationController;
+use App\Http\Controllers\Api\UserController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
 
@@ -23,6 +25,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('api/reports', ReportController::class);
     Route::post('api/reports/{id}/submit', [ReportController::class, 'submit']);
     Route::post('api/reports/{id}/approve', [ReportController::class, 'approve']);
+
+    // Invitation routes
+    Route::apiResource('api/invitations', InvitationController::class);
+    Route::post('api/invitations/{inviteCode}/accept', [InvitationController::class, 'accept']);
+    Route::post('api/invitations/{id}/resend', [InvitationController::class, 'resend']);
+
+    // User routes
+    Route::get('api/users/pending', [UserController::class, 'pending']);
+    Route::put('api/users/me/role', [UserController::class, 'updateMyRole']);
+    Route::put('api/users/me/location', [UserController::class, 'updateCurrentLocation']);
+    Route::put('api/users/{id}/role', [UserController::class, 'updateRole']);
+    Route::delete('api/users/{id}/location', [UserController::class, 'removeFromLocation']);
+    Route::get('api/users/team', [UserController::class, 'teamMembers']);
 });
 
 // Email verification routes
