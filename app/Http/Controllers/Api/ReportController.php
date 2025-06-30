@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Report;
 use App\Models\Location;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -20,17 +21,15 @@ class ReportController extends Controller
         $user = Auth::user();
         $query = Report::with(['user', 'location', 'approver']);
 
-        // Filter by user's access level
-        if ($user->isOwner()) {
-            // Owners see reports from all their locations
-            $locationIds = Location::where('owner_id', $user->id)->pluck('id');
-            $query->whereIn('location_id', $locationIds);
-        } elseif ($user->isManager()) {
-            // Managers see reports from their location
+        // Filter by user's current location
+        if ($user->location_id) {
             $query->where('location_id', $user->location_id);
         } else {
-            // Employees see only their own reports
-            $query->where('user_id', $user->id);
+            // If no location assigned, return empty
+            return response()->json([
+                'success' => true,
+                'data' => []
+            ]);
         }
 
         $reports = $query->orderBy('created_at', 'desc')->get();
@@ -223,13 +222,47 @@ class ReportController extends Controller
             ], 400);
         }
 
-        $report->update(['status' => 'submitted']);
+        // Check if user should get auto-approval
+        $shouldAutoApprove = false;
+        $autoApprovalReason = '';
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Report submitted for approval',
-            'data' => $report->load(['user', 'location'])
-        ]);
+        if ($user->isOwner()) {
+            // Owners get auto-approval
+            $shouldAutoApprove = true;
+            $autoApprovalReason = 'Auto-approved by owner';
+        } else {
+            // Check if user is a solo user (only user at their location)
+            $locationUserCount = User::where('location_id', $user->location_id)->count();
+            if ($locationUserCount === 1) {
+                $shouldAutoApprove = true;
+                $autoApprovalReason = 'Auto-approved (solo user at location)';
+            }
+        }
+
+        if ($shouldAutoApprove) {
+            // Auto-approve the report
+            $report->update([
+                'status' => 'approved',
+                'approved_by' => $user->id,
+                'approved_at' => now(),
+                'shift_notes' => $report->shift_notes . "\n\n" . $autoApprovalReason,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Report submitted and auto-approved',
+                'data' => $report->load(['user', 'location', 'approver'])
+            ]);
+        } else {
+            // Normal submission for approval
+            $report->update(['status' => 'submitted']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Report submitted for approval',
+                'data' => $report->load(['user', 'location'])
+            ]);
+        }
     }
 
     /**

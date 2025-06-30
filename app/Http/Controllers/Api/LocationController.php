@@ -36,11 +36,14 @@ class LocationController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        // Only owners can create locations
-        if (!Auth::user()->isOwner()) {
+        $user = Auth::user();
+
+        // Allow any authenticated user to create a location (for onboarding)
+        // If they already have a location_id, they need to be an owner
+        if ($user->location_id && !$user->isOwner()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Only owners can create locations'
+                'message' => 'Only owners can create additional locations'
             ], 403);
         }
 
@@ -52,7 +55,12 @@ class LocationController extends Controller
 
         $location = Location::create([
             ...$validated,
-            'owner_id' => Auth::id(),
+            'owner_id' => $user->id,
+        ]);
+
+        // Automatically assign the user to this location
+        $user->update([
+            'location_id' => $location->id,
         ]);
 
         return response()->json([

@@ -23,6 +23,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'role',
         'location_id',
+        'default_location_id',
+        'status',
     ];
 
     /**
@@ -54,6 +56,14 @@ class User extends Authenticatable implements MustVerifyEmail
     public function location()
     {
         return $this->belongsTo(Location::class);
+    }
+
+    /**
+     * Get the user's default location.
+     */
+    public function defaultLocation()
+    {
+        return $this->belongsTo(Location::class, 'default_location_id');
     }
 
     /**
@@ -136,5 +146,53 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isEmployee()
     {
         return $this->hasRole('employee');
+    }
+
+    /**
+     * Check if user is pending (waiting for invitation).
+     */
+    public function isPending()
+    {
+        return $this->status === 'pending';
+    }
+
+    /**
+     * Check if user is active.
+     */
+    public function isActive()
+    {
+        return $this->status === 'active';
+    }
+
+    /**
+     * Check if user is inactive.
+     */
+    public function isInactive()
+    {
+        return $this->status === 'inactive';
+    }
+
+    /**
+     * Check if user is the first user (should be owner).
+     */
+    public static function isFirstUser()
+    {
+        return self::count() === 0;
+    }
+
+    /**
+     * Get invitations sent by this user.
+     */
+    public function sentInvitations()
+    {
+        return $this->hasMany(Invitation::class, 'invited_by');
+    }
+
+    /**
+     * Get invitations received by this user.
+     */
+    public function receivedInvitations()
+    {
+        return $this->hasMany(Invitation::class, 'accepted_by');
     }
 }

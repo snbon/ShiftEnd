@@ -1,8 +1,18 @@
 <template>
   <v-app>
-    <template v-if="user">
+    <template v-if="user && !isOnboardingPage">
       <v-navigation-drawer app permanent>
         <v-list>
+          <v-list-item>
+            <v-list-item-content>
+              <div class="d-flex align-center py-4 px-2">
+                <!-- Logo placeholder -->
+                <!-- <img src="/logo.png" alt="ShiftEnd Logo" height="32" class="mr-2" /> -->
+                <span class="font-weight-bold text-h5">ShiftEnd</span>
+              </div>
+            </v-list-item-content>
+          </v-list-item>
+          <v-divider></v-divider>
           <v-list-item v-for="item in menu" :key="item.to" :to="item.to" router exact>
             <template #prepend>
               <v-icon>{{ item.icon }}</v-icon>
@@ -18,9 +28,6 @@
           </v-list-item>
         </v-list>
       </v-navigation-drawer>
-      <v-app-bar app color="primary" dark>
-        <v-toolbar-title>ShiftEnd</v-toolbar-title>
-      </v-app-bar>
     </template>
     <v-main>
       <v-alert
@@ -51,7 +58,19 @@ const user = ref(null);
 const loading = ref(false);
 const verificationMessage = ref('');
 
+const isOnboardingPage = computed(() => {
+  return route.path === '/onboarding';
+});
+
 const menu = computed(() => {
+  // If user is pending, show limited menu
+  if (user.value?.status === 'pending') {
+    return [
+      { title: 'Dashboard', to: '/', icon: 'mdi-view-dashboard' },
+      { title: 'Settings', to: '/settings', icon: 'mdi-cog' }
+    ];
+  }
+
   const baseMenu = [
     { title: 'Dashboard', to: '/', icon: 'mdi-view-dashboard' },
     { title: 'Add Report', to: '/add-report', icon: 'mdi-plus' },
@@ -63,6 +82,7 @@ const menu = computed(() => {
     baseMenu.push(
       { title: 'Locations', to: '/locations', icon: 'mdi-store' },
       { title: 'Team', to: '/team', icon: 'mdi-account-group' },
+      { title: 'Pending Users', to: '/pending-users', icon: 'mdi-account-clock' },
       { title: 'Settings', to: '/settings', icon: 'mdi-cog' }
     );
   } else if (user.value?.role === 'manager') {
@@ -116,6 +136,11 @@ const checkAuth = async () => {
       user.value = userResponse.data.user;
       // Update localStorage with fresh user data
       localStorage.setItem('user', JSON.stringify(userResponse.data.user));
+
+      // Check if user needs onboarding (verified, no location assigned, and not already on onboarding)
+      if (user.value.email_verified_at && !user.value.location_id && router.currentRoute.value.path !== '/onboarding') {
+        router.push('/onboarding');
+      }
     } else {
       // Clear user data if not authenticated
       user.value = null;

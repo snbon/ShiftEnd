@@ -87,13 +87,17 @@ class AuthController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => bcrypt($validated['password']),
-            'role' => 'employee', // default role
+            'role' => 'employee', // Default role
+            'status' => 'active', // All users are active by default
         ]);
 
         // Send email verification
         $user->sendEmailVerificationNotification();
 
-        return response()->json(['message' => 'Registration successful. Please check your email to verify your account.'], 201);
+        return response()->json([
+            'message' => 'Registration successful! Please check your email to verify your account.',
+            'user_id' => $user->id
+        ], 201);
     }
 
     /**
