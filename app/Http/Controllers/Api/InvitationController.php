@@ -393,6 +393,11 @@ class InvitationController extends Controller
                     'message' => 'You are already assigned to a location'
                 ], 400);
             }
+            // Auto-verify email if not already verified
+            if (is_null($user->email_verified_at)) {
+                $user->email_verified_at = now();
+                $user->save();
+            }
         } else {
             // Create user
             $user = User::create([
