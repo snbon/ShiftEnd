@@ -142,10 +142,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
+import { useLocationsStore } from '../store/locations';
 
-const locations = ref([]);
+const locationsStore = useLocationsStore();
+const locations = computed(() => locationsStore.locations);
 const loading = ref(false);
 const saving = ref(false);
 const showAddDialog = ref(false);
@@ -173,15 +175,10 @@ const headers = [
   { title: 'Actions', key: 'actions', sortable: false },
 ];
 
-const fetchLocations = async () => {
-  loading.value = true;
-  try {
-    const response = await axios.get('/api/locations');
-    locations.value = response.data.data || [];
-  } catch (error) {
-    console.error('Error fetching locations:', error);
-    showErrorMessage('Failed to load locations');
-  } finally {
+const fetchLocationsIfNeeded = async () => {
+  if (!locations.value.length) {
+    loading.value = true;
+    await locationsStore.fetchLocations();
     loading.value = false;
   }
 };
@@ -198,7 +195,7 @@ const saveLocation = async () => {
     }
 
     closeDialog();
-    fetchLocations();
+    fetchLocationsIfNeeded();
   } catch (error) {
     console.error('Error saving location:', error);
     const errorMessage = error.response?.data?.message || 'Failed to save location';
@@ -220,7 +217,7 @@ const deleteLocation = async (id) => {
   try {
     await axios.delete(`/api/locations/${id}`);
     showSuccessMessage('Location deleted successfully');
-    fetchLocations();
+    fetchLocationsIfNeeded();
   } catch (error) {
     console.error('Error deleting location:', error);
     showErrorMessage('Failed to delete location');
@@ -254,6 +251,6 @@ const showErrorMessage = (msg) => {
 };
 
 onMounted(() => {
-  fetchLocations();
+  fetchLocationsIfNeeded();
 });
 </script>

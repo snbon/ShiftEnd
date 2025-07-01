@@ -13,23 +13,23 @@
           <v-card-title>Location Settings</v-card-title>
           <v-card-text>
             <!-- Single Location Display -->
-            <div v-if="userLocations.length === 1">
+            <div v-if="fallbackLocations.length === 1">
               <v-list>
                 <v-list-item>
                   <template #prepend>
                     <v-icon>mdi-store</v-icon>
                   </template>
                   <v-list-item-title>Current Location</v-list-item-title>
-                  <v-list-item-subtitle>{{ userLocations[0].name }}</v-list-item-subtitle>
+                  <v-list-item-subtitle>{{ fallbackLocations[0].name }}</v-list-item-subtitle>
                 </v-list-item>
               </v-list>
             </div>
 
             <!-- Multiple Locations Selector -->
-            <div v-else-if="userLocations.length > 1">
+            <div v-else-if="fallbackLocations.length > 1">
               <v-select
                 v-model="currentLocationId"
-                :items="userLocations"
+                :items="fallbackLocations"
                 item-title="name"
                 item-value="id"
                 label="Current Location"
@@ -59,7 +59,7 @@
                   <v-icon>mdi-account</v-icon>
                 </template>
                 <v-list-item-title>Name</v-list-item-title>
-                <v-list-item-subtitle>{{ user?.name }}</v-list-item-subtitle>
+                <v-list-item-subtitle>{{ fallbackUser?.name }}</v-list-item-subtitle>
               </v-list-item>
 
               <v-list-item>
@@ -67,7 +67,7 @@
                   <v-icon>mdi-email</v-icon>
                 </template>
                 <v-list-item-title>Email</v-list-item-title>
-                <v-list-item-subtitle>{{ user?.email }}</v-list-item-subtitle>
+                <v-list-item-subtitle>{{ fallbackUser?.email }}</v-list-item-subtitle>
               </v-list-item>
 
               <v-list-item>
@@ -96,7 +96,7 @@
           <v-card-text>
             <v-data-table
               :headers="locationHeaders"
-              :items="userLocations"
+              :items="fallbackLocations"
               :loading="loading"
               class="elevation-1"
             >
@@ -251,9 +251,9 @@
               :rules="[v => !!v || 'Role is required']"
             />
             <v-select
-              v-if="userLocations.length > 1"
+              v-if="fallbackLocations.length > 1"
               v-model="inviteLocationId"
-              :items="userLocations"
+              :items="fallbackLocations"
               item-title="name"
               item-value="id"
               label="Location"
@@ -302,16 +302,40 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { useLocationStore } from '../store/location';
+import { useUserStore } from '../store/users';
+import { useLocationsStore } from '../store/locations';
+import { useTeamsStore } from '../store/teams';
 
 const router = useRouter();
-const user = ref(null);
-const userLocations = ref([]);
-const teamMembers = ref([]);
-const loading = ref(false);
+const userStore = useUserStore();
+const locationsStore = useLocationsStore();
+const teamsStore = useTeamsStore();
+
+const user = computed(() => userStore.user);
+const userLocations = computed(() => locationsStore.locations);
+const loading = computed(() => (!user.value && userStore.loading) || (!userLocations.value.length && locationsStore.loading));
+
+// Fallback to user data from localStorage if store is empty
+const fallbackUser = computed(() => {
+  if (user.value) return user.value;
+  try {
+    const storedUser = localStorage.getItem('user');
+    return storedUser ? JSON.parse(storedUser) : null;
+  } catch (e) {
+    return null;
+  }
+});
+
+const fallbackLocations = computed(() => {
+  if (userLocations.value.length) return userLocations.value;
+  const userData = fallbackUser.value;
+  return userData?.locations || [];
+});
+const teamMembers = computed(() => teamsStore.getTeamMembers(currentLocationId.value));
 const creating = ref(false);
 const inviting = ref(false);
 const updatingRole = ref(false);
@@ -357,35 +381,18 @@ const currentLocationId = computed({
 });
 
 const myRole = computed(() => {
-  if (!user.value || !user.value.locations) return null;
-  const loc = user.value.locations.find(l => l.id === currentLocationId.value);
+  const userData = fallbackUser.value;
+  if (!userData || !userData.locations) return null;
+  const loc = userData.locations.find(l => l.id === currentLocationId.value);
   return loc?.pivot?.role || null;
 });
 
-const fetchData = async () => {
-  loading.value = true;
-  try {
-    const userResponse = await axios.get('/api/user');
-    user.value = userResponse.data.user;
-    userLocations.value = user.value.locations || [];
-    if (userLocations.value.length > 0 && !currentLocationId.value) {
-      currentLocationId.value = userLocations.value[0].id;
-    }
-    await fetchTeamMembers();
-  } catch (error) {
-    console.error('Error fetching data:', error);
-  } finally {
-    loading.value = false;
-  }
-};
+const refreshUser = () => userStore.refreshUser();
+const refreshLocations = () => locationsStore.refreshLocations();
 
-const fetchTeamMembers = async () => {
-  if (!currentLocationId.value) return;
-  try {
-    const response = await axios.get(`/api/locations/${currentLocationId.value}/team`);
-    teamMembers.value = response.data.team || [];
-  } catch (error) {
-    console.error('Error fetching team members:', error);
+const fetchTeamMembersIfNeeded = async () => {
+  if (currentLocationId.value && !teamsStore.getTeamMembers(currentLocationId.value).length) {
+    await teamsStore.fetchTeamMembers(currentLocationId.value);
   }
 };
 
@@ -400,7 +407,7 @@ const createLocation = async () => {
     await axios.post('/api/locations', newLocation.value);
     showCreateLocation.value = false;
     newLocation.value = { name: '', address: '', phone: '' };
-    await fetchData();
+    await fetchTeamMembersIfNeeded();
   } catch (error) {
     console.error('Error creating location:', error);
   } finally {
@@ -440,7 +447,7 @@ const updateUserRole = async () => {
       role: editingUserRole.value
     });
     showEditUserRole.value = false;
-    await fetchData();
+    await fetchTeamMembersIfNeeded();
   } catch (error) {
     console.error('Error updating user role:', error);
   } finally {
@@ -452,7 +459,7 @@ const deleteLocation = async (locationId) => {
   if (confirm('Are you sure you want to delete this location?')) {
     try {
       await axios.delete(`/api/locations/${locationId}`);
-      await fetchData();
+      await fetchTeamMembersIfNeeded();
     } catch (error) {
       console.error('Error deleting location:', error);
     }
@@ -463,7 +470,7 @@ const removeUser = async (userId) => {
   if (confirm('Are you sure you want to remove this user from the location? This action cannot be reverted.')) {
     try {
       await axios.delete(`/api/locations/${currentLocationId.value}/users/${userId}`);
-      await fetchTeamMembers();
+      await fetchTeamMembersIfNeeded();
     } catch (error) {
       console.error('Error removing user:', error);
     }
@@ -532,6 +539,22 @@ const message = ref('');
 const messageType = ref('success');
 
 onMounted(() => {
-  fetchData();
+  window.addEventListener('user-location-ready', userLocationReadyHandler);
+  if (fallbackUser.value && currentLocationId.value) {
+    fetchTeamMembersIfNeeded();
+  }
 });
+
+onUnmounted(() => {
+  window.removeEventListener('user-location-ready', userLocationReadyHandler);
+});
+
+function userLocationReadyHandler(e) {
+  const { user: userData, locationId } = e.detail;
+  userStore.user = userData;
+  locationsStore.initializeFromUser(userData);
+  if (locationId) {
+    fetchTeamMembersIfNeeded();
+  }
+}
 </script>

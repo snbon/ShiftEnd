@@ -194,10 +194,22 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useUserStore } from '../store/users';
+import { useLocationsStore } from '../store/locations';
+import { useTeamsStore } from '../store/teams';
 import axios from 'axios';
 
-const loading = ref(false);
+const userStore = useUserStore();
+const locationsStore = useLocationsStore();
+const teamsStore = useTeamsStore();
+
+const user = computed(() => userStore.user);
+const locations = computed(() => locationsStore.locations);
+const selectedLocation = ref(null);
+const teamMembers = computed(() => teamsStore.getTeamMembers(selectedLocation.value));
+const loading = computed(() => teamsStore.loading);
+
 const inviteLoading = ref(false);
 const roleChangeLoading = ref(false);
 const showInviteDialog = ref(false);
@@ -211,12 +223,6 @@ const message = ref('');
 const messageType = ref('success');
 const snackbarLoading = ref(false);
 const resendingId = ref(null);
-
-const user = ref(null);
-const locations = ref([]);
-const selectedLocation = ref(null);
-const teamMembers = ref([]);
-const invitations = ref([]);
 
 const inviteEmail = ref('');
 const inviteRole = ref('employee');
@@ -303,36 +309,9 @@ const showSnackbarMessage = (msg, type, loading = false) => {
   snackbarLoading.value = loading;
 };
 
-const fetchUser = async () => {
-  try {
-    const response = await axios.get('/api/user');
-    user.value = response.data.user;
-  } catch (error) {
-    console.error('Error fetching user:', error);
-  }
-};
-
-const fetchLocations = async () => {
-  try {
-    const response = await axios.get('/api/locations');
-    locations.value = response.data.data;
-    if (locations.value.length > 0 && !selectedLocation.value) {
-      selectedLocation.value = locations.value[0].id;
-    }
-  } catch (error) {
-    console.error('Error fetching locations:', error);
-  }
-};
-
-const fetchTeamMembers = async () => {
-  loading.value = true;
-  try {
-    const response = await axios.get(`/api/locations/${selectedLocation.value}/team`);
-    teamMembers.value = response.data.team || [];
-  } catch (error) {
-    console.error('Error loading team members:', error);
-  } finally {
-    loading.value = false;
+const fetchTeamMembersIfNeeded = async () => {
+  if (selectedLocation.value && !teamsStore.getTeamMembers(selectedLocation.value).length) {
+    await teamsStore.fetchTeamMembers(selectedLocation.value);
   }
 };
 
@@ -349,7 +328,7 @@ const sendInvitation = async () => {
     inviteRole.value = 'employee';
     inviteLocationId.value = null;
     showSnackbarMessage('Invitation sent!', 'success');
-    fetchTeamMembers();
+    fetchTeamMembersIfNeeded();
   } catch (error) {
     showSnackbarMessage(error.response?.data?.message || 'Failed to send invitation.', 'error');
   } finally {
@@ -372,7 +351,7 @@ const changeUserRole = async () => {
     });
     showSnackbarMessage('Role updated successfully!', 'success');
     showRoleDialog.value = false;
-    fetchTeamMembers();
+    fetchTeamMembersIfNeeded();
   } catch (error) {
     console.error('Error updating role:', error);
     showSnackbarMessage('Failed to update role', 'error');
@@ -387,7 +366,7 @@ const removeUser = async () => {
   try {
     await axios.delete(`/api/locations/${selectedLocation.value}/users/${selectedUser.value.id}`);
     showSnackbarMessage('User removed from team successfully!', 'success');
-    fetchTeamMembers();
+    fetchTeamMembersIfNeeded();
   } catch (error) {
     console.error('Error removing user:', error);
     showSnackbarMessage('Failed to remove user', 'error');
@@ -409,8 +388,15 @@ const resendInvitation = async (item) => {
 };
 
 onMounted(async () => {
-  await fetchUser();
-  await fetchLocations();
-  await fetchTeamMembers();
+  if (!user.value) await userStore.fetchUser();
+  if (!locations.value.length) await locationsStore.fetchLocations();
+  if (!selectedLocation.value && locations.value.length) selectedLocation.value = locations.value[0].id;
+  await fetchTeamMembersIfNeeded();
+});
+
+watch(selectedLocation, async (newVal, oldVal) => {
+  if (newVal && newVal !== oldVal) {
+    await fetchTeamMembersIfNeeded();
+  }
 });
 </script>

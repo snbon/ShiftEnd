@@ -205,7 +205,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { useLocationStore } from '../store/location';
@@ -325,9 +325,11 @@ const submitAndSubmit = () => {
 
 const fetchUserAndLocation = async () => {
   try {
-    // Fetch user data
-    const userResponse = await axios.get('/api/user');
-    user.value = userResponse.data.user;
+    // Only fetch user data if we don't have it cached
+    if (!user.value) {
+      const userResponse = await axios.get('/api/user');
+      user.value = userResponse.data.user;
+    }
   } catch (error) {
     console.error('Error fetching user/location data:', error);
   }
@@ -340,8 +342,20 @@ onMounted(() => {
   const month = String(today.getMonth() + 1).padStart(2, '0');
   const day = String(today.getDate()).padStart(2, '0');
   report_date.value = `${year}-${month}-${day}`;
-
-  // Fetch user and location data
-  fetchUserAndLocation();
+  window.addEventListener('user-location-ready', userLocationReadyHandler);
+  if (!currentLocationId.value || !user.value) {
+    fetchUserAndLocation();
+  }
 });
+
+onUnmounted(() => {
+  window.removeEventListener('user-location-ready', userLocationReadyHandler);
+});
+
+function userLocationReadyHandler(e) {
+  const { user: userData } = e.detail;
+  if (!user.value) {
+    user.value = userData;
+  }
+}
 </script>

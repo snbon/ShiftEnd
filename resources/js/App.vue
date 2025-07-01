@@ -114,10 +114,12 @@ const logout = async () => {
   try {
     await axios.post('/api/logout');
     localStorage.removeItem('user');
+    locationStore.clearLocation();
     user.value = null;
     window.location.href = '/login';
   } catch (error) {
     localStorage.removeItem('user');
+    locationStore.clearLocation();
     user.value = null;
     window.location.href = '/login';
   }
@@ -131,6 +133,10 @@ const checkAuth = async () => {
       try {
         const userData = JSON.parse(storedUser);
         user.value = userData;
+        // If we have a stored user, trigger the user watcher immediately
+        if (userData && userData.locations && userData.locations.length > 0) {
+          // This will trigger the user watcher and set location
+        }
       } catch (e) {
         localStorage.removeItem('user');
       }
@@ -184,21 +190,34 @@ onMounted(() => {
     checkAuth();
   }
   handleVerificationParams();
-  // Set currentLocationId on login or user fetch
+    // Set currentLocationId on login or user fetch
   watch(user, (newUser) => {
     if (newUser && newUser.locations && newUser.locations.length > 0) {
+      // If no location is set, set it to the first available location
       if (!locationStore.currentLocationId) {
-        locationStore.setLocation(newUser.default_location_id || newUser.locations[0].id);
+        const locationToSet = newUser.default_location_id || newUser.locations[0].id;
+        locationStore.setLocation(locationToSet);
+      } else {
+        // Verify the stored location is still valid for this user
+        const isValidLocation = newUser.locations.some(loc => loc.id === locationStore.currentLocationId);
+        if (!isValidLocation) {
+          // If stored location is not valid, set to first available
+          const locationToSet = newUser.default_location_id || newUser.locations[0].id;
+          locationStore.setLocation(locationToSet);
+        }
       }
+
+      // Emit event that user and location are ready
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('user-location-ready', {
+          detail: {
+            user: newUser,
+            locationId: locationStore.currentLocationId
+          }
+        }));
+      }, 100); // Small delay to ensure location is set
     }
   }, { immediate: true });
-});
-
-// Also watch for route changes (SPA navigation)
-watch(() => route.path + location.search, () => {
-  if (!isPublicRoute.value) {
-    checkAuth();
-  }
 });
 </script>
 

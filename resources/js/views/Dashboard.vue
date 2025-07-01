@@ -139,14 +139,17 @@
 import { ref, onMounted, computed, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
+import { useReportsStore } from '../store/reports';
 import { useLocationStore } from '../store/location';
 
 const router = useRouter();
-const reports = ref([]);
-const loading = ref(false);
-const user = ref(null);
+const reportsStore = useReportsStore();
 const locationStore = useLocationStore();
 const currentLocationId = computed(() => locationStore.currentLocationId);
+
+const reports = computed(() => reportsStore.getReports(currentLocationId.value));
+const loading = computed(() => !reports.value.length && reportsStore.loading);
+const user = ref(null);
 
 const reportHeaders = [
   { title: 'Date', key: 'report_date' },
@@ -175,7 +178,7 @@ const fetchReports = async () => {
     const response = await axios.get('/api/reports', {
       params: { location_id: currentLocationId.value }
     });
-    reports.value = response.data.data || [];
+    reportsStore.setReports(response.data.data || []);
   } catch (error) {
     console.error('Error fetching reports:', error);
   } finally {
@@ -222,13 +225,33 @@ const logout = () => {
   // Implement logout functionality
 };
 
+const refreshReports = () => reportsStore.refreshReports(currentLocationId.value);
+
 onMounted(() => {
-  fetchUser();
-  fetchReports();
-  window.addEventListener('location-changed', fetchReports);
+  window.addEventListener('user-location-ready', userLocationReadyHandler);
+  window.addEventListener('location-changed', locationChangeHandler);
+  if (currentLocationId.value && !reportsStore.getReports(currentLocationId.value).length) {
+    reportsStore.fetchReports(currentLocationId.value);
+  }
 });
 
 onUnmounted(() => {
-  window.removeEventListener('location-changed', fetchReports);
+  window.removeEventListener('user-location-ready', userLocationReadyHandler);
+  window.removeEventListener('location-changed', locationChangeHandler);
 });
+
+function userLocationReadyHandler(e) {
+  const { user: userData, locationId } = e.detail;
+  user.value = userData;
+  if (locationId && !reportsStore.getReports(locationId).length) {
+    reportsStore.fetchReports(locationId);
+  }
+}
+
+function locationChangeHandler(e) {
+  const locId = e?.detail?.locationId || currentLocationId.value;
+  if (locId && !reportsStore.getReports(locId).length) {
+    reportsStore.fetchReports(locId);
+  }
+}
 </script>

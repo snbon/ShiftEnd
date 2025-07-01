@@ -189,11 +189,17 @@
 import { ref, onMounted, computed, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
+import { useReportsStore } from '../store/reports';
 import { useLocationStore } from '../store/location';
 
 const router = useRouter();
-const reports = ref([]);
-const loading = ref(false);
+const reportsStore = useReportsStore();
+const locationStore = useLocationStore();
+const currentLocationId = computed(() => locationStore.currentLocationId);
+
+const reports = computed(() => reportsStore.getReports(currentLocationId.value));
+const loading = computed(() => !reports.value.length && reportsStore.loading);
+
 const user = ref(null);
 const showApprovalDialog = ref(false);
 const approvalLoading = ref(false);
@@ -228,21 +234,12 @@ const headers = [
   { title: 'Actions', key: 'actions', sortable: false },
 ];
 
-const locationStore = useLocationStore();
-const currentLocationId = computed(() => locationStore.currentLocationId);
-
 const fetchReports = async () => {
-  loading.value = true;
   try {
-    const response = await axios.get('/api/reports', {
-      params: { location_id: currentLocationId.value }
-    });
-    reports.value = response.data.data || [];
+    await reportsStore.fetchReports(currentLocationId.value);
   } catch (error) {
     console.error('Error fetching reports:', error);
     showErrorMessage('Failed to load reports');
-  } finally {
-    loading.value = false;
   }
 };
 
@@ -339,13 +336,33 @@ const showErrorMessage = (msg) => {
   showMessage.value = true;
 };
 
+const refreshReports = () => reportsStore.refreshReports(currentLocationId.value);
+
 onMounted(() => {
-  fetchUser();
-  fetchReports();
-  window.addEventListener('location-changed', fetchReports);
+  window.addEventListener('user-location-ready', userLocationReadyHandler);
+  window.addEventListener('location-changed', locationChangeHandler);
+  if (currentLocationId.value && !reportsStore.getReports(currentLocationId.value).length) {
+    reportsStore.fetchReports(currentLocationId.value);
+  }
 });
 
 onUnmounted(() => {
-  window.removeEventListener('location-changed', fetchReports);
+  window.removeEventListener('user-location-ready', userLocationReadyHandler);
+  window.removeEventListener('location-changed', locationChangeHandler);
 });
+
+function userLocationReadyHandler(e) {
+  const { user: userData, locationId } = e.detail;
+  user.value = userData;
+  if (locationId && !reportsStore.getReports(locationId).length) {
+    reportsStore.fetchReports(locationId);
+  }
+}
+
+function locationChangeHandler(e) {
+  const locId = e?.detail?.locationId || currentLocationId.value;
+  if (locId && !reportsStore.getReports(locId).length) {
+    reportsStore.fetchReports(locId);
+  }
+}
 </script>
