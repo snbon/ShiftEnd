@@ -55,6 +55,14 @@
 
               <template v-slot:item.actions="{ item }">
                 <v-btn
+                  v-if="item.status === 'invitation_sent'"
+                  icon="mdi-email"
+                  size="small"
+                  variant="text"
+                  @click="resendInvitation(item)"
+                  :title="'Resend Invitation'"
+                />
+                <v-btn
                   v-if="canManageUser(item)"
                   icon="mdi-dots-vertical"
                   variant="text"
@@ -172,9 +180,15 @@
     <v-snackbar
       v-model="showMessage"
       :color="messageType"
-      :timeout="3000"
+      :timeout="snackbarLoading ? -1 : 3000"
     >
-      {{ message }}
+      <template v-if="snackbarLoading">
+        <v-progress-circular indeterminate color="white" size="20" class="mr-2" />
+        {{ message }}
+      </template>
+      <template v-else>
+        {{ message }}
+      </template>
     </v-snackbar>
   </v-container>
 </template>
@@ -195,6 +209,8 @@ const newRole = ref('');
 const showMessage = ref(false);
 const message = ref('');
 const messageType = ref('success');
+const snackbarLoading = ref(false);
+const resendingId = ref(null);
 
 const user = ref(null);
 const locations = ref([]);
@@ -274,16 +290,11 @@ const getStatusColor = (status) => {
   return colors[status] || 'grey';
 };
 
-const showSuccessMessage = (msg) => {
+const showSnackbarMessage = (msg, type, loading = false) => {
   message.value = msg;
-  messageType.value = 'success';
+  messageType.value = type;
   showMessage.value = true;
-};
-
-const showErrorMessage = (msg) => {
-  message.value = msg;
-  messageType.value = 'error';
-  showMessage.value = true;
+  snackbarLoading.value = loading;
 };
 
 const fetchUser = async () => {
@@ -331,14 +342,10 @@ const sendInvitation = async () => {
     inviteEmail.value = '';
     inviteRole.value = 'employee';
     inviteLocationId.value = null;
-    message.value = 'Invitation sent!';
-    messageType.value = 'success';
-    showMessage.value = true;
+    showSnackbarMessage('Invitation sent!', 'success');
     fetchTeamMembers();
   } catch (error) {
-    message.value = error.response?.data?.message || 'Failed to send invitation.';
-    messageType.value = 'error';
-    showMessage.value = true;
+    showSnackbarMessage(error.response?.data?.message || 'Failed to send invitation.', 'error');
   } finally {
     inviteLoading.value = false;
   }
@@ -359,12 +366,12 @@ const changeUserRole = async () => {
       role: newRole.value,
     });
 
-    showSuccessMessage('Role updated successfully!');
+    showSnackbarMessage('Role updated successfully!', 'success');
     showRoleDialog.value = false;
     fetchTeamMembers();
   } catch (error) {
     console.error('Error updating role:', error);
-    showErrorMessage('Failed to update role');
+    showSnackbarMessage('Failed to update role', 'error');
   } finally {
     roleChangeLoading.value = false;
   }
@@ -375,11 +382,25 @@ const removeUser = async () => {
 
   try {
     await axios.delete(`/api/users/${selectedUser.value.id}`);
-    showSuccessMessage('User removed from team successfully!');
+    showSnackbarMessage('User removed from team successfully!', 'success');
     fetchTeamMembers();
   } catch (error) {
     console.error('Error removing user:', error);
-    showErrorMessage('Failed to remove user');
+    showSnackbarMessage('Failed to remove user', 'error');
+  }
+};
+
+const resendInvitation = async (item) => {
+  try {
+    resendingId.value = item.id;
+    showSnackbarMessage('Resending invitation...', 'info', true);
+    const id = item.id.toString().replace('invitation-', '');
+    await axios.post(`/api/invitations/${id}/resend`);
+    showSnackbarMessage('Invitation resent!', 'success');
+  } catch (error) {
+    showSnackbarMessage('Failed to resend invitation.', 'error');
+  } finally {
+    resendingId.value = null;
   }
 };
 

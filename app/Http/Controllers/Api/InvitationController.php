@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class InvitationController extends Controller
 {
@@ -128,7 +129,7 @@ class InvitationController extends Controller
         ]);
 
         // Send invitation email
-        \Mail::to($invitation->email)->send(new \App\Mail\InvitationMail($invitation, $location, $user));
+        Mail::to($invitation->email)->send(new \App\Mail\InvitationMail($invitation, $location, $user));
 
         return response()->json([
             'success' => true,
@@ -280,14 +281,22 @@ class InvitationController extends Controller
     }
 
     /**
-     * Resend an invitation.
+     * Resend an invitation email.
      */
     public function resend(string $id): JsonResponse
     {
         $user = Auth::user();
         $invitation = Invitation::with('location')->findOrFail($id);
 
-        // Check if user can resend this invitation
+        // Only allow resending if still pending
+        if ($invitation->status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only pending invitations can be resent.'
+            ], 400);
+        }
+
+        // Check permissions
         if ($user->isOwner()) {
             if ($invitation->location->owner_id !== $user->id) {
                 return response()->json([
@@ -296,7 +305,7 @@ class InvitationController extends Controller
                 ], 403);
             }
         } elseif ($user->isManager()) {
-            if ($invitation->location_id !== $user->location_id || $invitation->invited_by !== $user->id) {
+            if ($invitation->location_id !== $user->location_id) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Access denied'
@@ -309,22 +318,112 @@ class InvitationController extends Controller
             ], 403);
         }
 
-        if ($invitation->status !== 'pending') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cannot resend accepted or expired invitations'
-            ], 400);
-        }
-
-        // Update invitation with new expiry and code
-        $invitation->update([
-            'invite_code' => Invitation::generateInviteCode(),
-            'expires_at' => now()->addDays(7),
-        ]);
+        // Resend invitation email
+        Mail::to($invitation->email)->send(new \App\Mail\InvitationMail($invitation, $invitation->location, $user));
 
         return response()->json([
             'success' => true,
-            'message' => 'Invitation resent successfully',
+            'message' => 'Invitation resent successfully.'
+        ]);
+    }
+
+    /**
+     * Public: Show invitation details by invite code (no auth required)
+     */
+    public function publicShow(string $inviteCode): JsonResponse
+    {
+        $invitation = Invitation::with(['location', 'inviter', 'acceptor'])
+            ->where('invite_code', $inviteCode)
+            ->first();
+
+        if (!$invitation) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid invitation code'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $invitation
+        ]);
+    }
+
+    /**
+     * Public: Accept invitation by invite code (no auth required)
+     * Expects: email (must match invitation), name, password, password_confirmation
+     */
+    public function publicAccept(Request $request, string $inviteCode): JsonResponse
+    {
+        $invitation = Invitation::with('location')->where('invite_code', $inviteCode)->first();
+
+        if (!$invitation) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid invitation code'
+            ], 404);
+        }
+
+        if (!$invitation->canBeAccepted()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invitation has expired or already been accepted'
+            ], 400);
+        }
+
+        $validated = $request->validate([
+            'email' => 'required|email',
+            'name' => 'required|string|max:255',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        if ($invitation->email !== $validated['email']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This invitation was sent to a different email address'
+            ], 400);
+        }
+
+        // Check if user already exists
+        $user = User::where('email', $validated['email'])->first();
+        if ($user) {
+            if ($user->location_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You are already assigned to a location'
+                ], 400);
+            }
+        } else {
+            // Create user
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => bcrypt($validated['password']),
+                'role' => $invitation->role,
+                'status' => 'active',
+                'email_verified_at' => now(), // Assume verified via invite
+            ]);
+        }
+
+        \DB::transaction(function () use ($invitation, $user) {
+            // Update invitation
+            $invitation->update([
+                'status' => 'accepted',
+                'accepted_at' => now(),
+                'accepted_by' => $user->id,
+            ]);
+
+            // Update user
+            $user->update([
+                'location_id' => $invitation->location_id,
+                'role' => $invitation->role,
+                'status' => 'active',
+            ]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Invitation accepted successfully',
             'data' => $invitation->load(['location', 'inviter'])
         ]);
     }

@@ -21,4 +21,18 @@ const router = createRouter({
   routes,
 });
 
+// Add a global navigation guard to allow public access to /invite/:inviteCode, /login, /register
+router.beforeEach((to, from, next) => {
+  // Allow /login, /register, /invite, and /invite/:inviteCode as public
+  const isLogin = to.path === '/login' || to.path.startsWith('/login?');
+  const isRegister = to.path === '/register' || to.path.startsWith('/register?');
+  const isInvite = to.path === '/invite' || to.path.startsWith('/invite/');
+  const isPublic = isLogin || isRegister || isInvite;
+  const user = localStorage.getItem('user');
+  if (!isPublic && !user) {
+    return next('/login');
+  }
+  next();
+});
+
 export default router;

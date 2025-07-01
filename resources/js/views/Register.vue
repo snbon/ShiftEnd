@@ -51,7 +51,7 @@
               <v-btn color="primary" @click="register" :loading="loading">Register</v-btn>
             </v-card-actions>
             <v-card-text class="text-center">
-              <v-alert v-if="error" type="error" class="mb-4">{{ error }}</v-alert>
+              <v-alert v-if="error" :type="error.includes('created') ? 'success' : 'error'" class="mb-4">{{ error }}</v-alert>
               <div class="mt-4">
                 <router-link to="/login">Already have an account? Login</router-link>
               </div>

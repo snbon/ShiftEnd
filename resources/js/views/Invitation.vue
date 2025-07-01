@@ -57,25 +57,57 @@
               Expires: {{ formatDate(invitation.expires_at) }}
             </div>
 
-            <div v-if="!isLoggedIn" class="mb-4">
-              <v-alert type="info" variant="tonal">
-                Please log in or register to accept this invitation.
+            <!-- Onboarding Registration Form for Invited Users -->
+            <div v-if="!isLoggedIn">
+              <v-alert type="info" variant="tonal" class="mb-4">
+                Please complete your registration to join the team.
               </v-alert>
-              <v-btn
-                color="primary"
-                @click="$router.push('/login')"
-                class="mr-2"
-              >
-                Log In
-              </v-btn>
-              <v-btn
-                variant="outlined"
-                @click="$router.push('/register')"
-              >
-                Register
-              </v-btn>
+              <v-form @submit.prevent="registerInvitedUser" ref="registerForm">
+                <v-text-field
+                  v-model="registerName"
+                  label="Your Name"
+                  prepend-icon="mdi-account"
+                  required
+                  :rules="[v => !!v || 'Name is required']"
+                />
+                <v-text-field
+                  v-model="registerEmail"
+                  label="Email"
+                  prepend-icon="mdi-email"
+                  type="email"
+                  readonly
+                />
+                <v-text-field
+                  v-model="registerPassword"
+                  label="Password"
+                  prepend-icon="mdi-lock"
+                  type="password"
+                  required
+                  :rules="[v => !!v || 'Password is required', v => v.length >= 8 || 'Password must be at least 8 characters']"
+                />
+                <v-text-field
+                  v-model="registerPasswordConfirm"
+                  label="Confirm Password"
+                  prepend-icon="mdi-lock-check"
+                  type="password"
+                  required
+                  :rules="[v => !!v || 'Please confirm your password', v => v === registerPassword || 'Passwords must match']"
+                />
+                <v-btn
+                  color="primary"
+                  size="large"
+                  block
+                  :loading="registering"
+                  @click="registerInvitedUser"
+                >
+                  Create Account & Join Team
+                </v-btn>
+              </v-form>
+              <v-alert v-if="registerError" type="error" class="mt-4">{{ registerError }}</v-alert>
+              <v-alert v-if="registerSuccess" type="success" class="mt-4">{{ registerSuccess }}</v-alert>
             </div>
 
+            <!-- Existing logic for logged in users -->
             <div v-else-if="canAccept" class="mb-4">
               <v-btn
                 color="success"
@@ -112,6 +144,14 @@ const accepting = ref(false);
 const error = ref('');
 const invitation = ref(null);
 const user = ref(null);
+
+const registerName = ref('');
+const registerEmail = ref('');
+const registerPassword = ref('');
+const registerPasswordConfirm = ref('');
+const registering = ref(false);
+const registerError = ref('');
+const registerSuccess = ref('');
 
 const inviteCode = computed(() => route.params.inviteCode);
 
@@ -170,8 +210,10 @@ const getAcceptanceError = () => {
 
 const fetchInvitation = async () => {
   try {
-    const response = await axios.get(`/api/invitations/${inviteCode.value}`);
+    const response = await axios.get(`/api/invitations/public/${inviteCode.value}`);
     invitation.value = response.data.data;
+    // Pre-fill the email for registration
+    registerEmail.value = invitation.value.email;
   } catch (error) {
     console.error('Error fetching invitation:', error);
     if (error.response?.status === 404) {
@@ -184,13 +226,25 @@ const fetchInvitation = async () => {
   }
 };
 
-const fetchUser = async () => {
+const registerInvitedUser = async () => {
+  registering.value = true;
+  registerError.value = '';
+  registerSuccess.value = '';
   try {
-    const response = await axios.get('/api/user');
-    user.value = response.data.user;
+    await axios.post(`/api/invitations/public/${inviteCode.value}/accept`, {
+      name: registerName.value,
+      email: registerEmail.value,
+      password: registerPassword.value,
+      password_confirmation: registerPasswordConfirm.value,
+    });
+    registerSuccess.value = 'Account created and joined! You can now log in.';
+    setTimeout(() => {
+      router.push({ path: '/login', query: { message: 'Registration successful! You can now log in.' } });
+    }, 2000);
   } catch (error) {
-    console.error('Error fetching user:', error);
-    // User is not logged in, which is fine
+    registerError.value = error.response?.data?.message || 'Registration failed. Please try again.';
+  } finally {
+    registering.value = false;
   }
 };
 
@@ -210,8 +264,7 @@ const acceptInvitation = async () => {
   }
 };
 
-onMounted(async () => {
-  await fetchUser();
-  await fetchInvitation();
+onMounted(() => {
+  fetchInvitation();
 });
 </script>

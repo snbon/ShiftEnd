@@ -28,8 +28,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Invitation routes
     Route::apiResource('api/invitations', InvitationController::class);
-    Route::post('api/invitations/{inviteCode}/accept', [InvitationController::class, 'accept']);
     Route::post('api/invitations/{id}/resend', [InvitationController::class, 'resend']);
+    Route::post('api/invitations/{inviteCode}/accept', [InvitationController::class, 'accept']);
 
     // User routes
     Route::get('api/users/pending', [UserController::class, 'pending']);
@@ -40,6 +40,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('api/users/{id}/location', [UserController::class, 'removeFromLocation']);
     Route::get('api/users/team', [UserController::class, 'teamMembers']);
 });
+
+// Public invitation endpoints
+Route::get('api/invitations/public/{inviteCode}', [App\Http\Controllers\Api\InvitationController::class, 'publicShow']);
+Route::post('api/invitations/public/{inviteCode}/accept', [App\Http\Controllers\Api\InvitationController::class, 'publicAccept']);
 
 // Email verification routes
 Route::get('/email/verify/{id}/{hash}', function ($id, $hash) {

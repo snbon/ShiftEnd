@@ -181,6 +181,14 @@
                   color="error"
                   @click="removeUser(item.id)"
                 />
+                <v-btn
+                  v-if="item.status === 'invitation_sent'"
+                  icon="mdi-email"
+                  size="small"
+                  variant="text"
+                  @click="resendInvitation(item)"
+                  :title="'Resend Invitation'"
+                />
               </template>
             </v-data-table>
           </v-card-text>
@@ -281,6 +289,15 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Snackbar for feedback -->
+    <v-snackbar
+      v-model="showMessageRef"
+      :color="messageType"
+      :timeout="3000"
+    >
+      {{ message }}
+    </v-snackbar>
   </v-container>
 </template>
 
@@ -481,6 +498,25 @@ const switchLocation = async () => {
     console.error('Error switching location:', error);
   }
 };
+
+const resendInvitation = async (item) => {
+  try {
+    const id = item.id.toString().replace('invitation-', '');
+    await axios.post(`/api/invitations/${id}/resend`);
+    showMessage('Invitation resent!', 'success');
+  } catch (error) {
+    showMessage('Failed to resend invitation.', 'error');
+  }
+};
+
+const showMessage = (msg, type) => {
+  message.value = msg;
+  messageType.value = type;
+  showMessageRef.value = true;
+};
+const showMessageRef = ref(false);
+const message = ref('');
+const messageType = ref('success');
 
 onMounted(() => {
   fetchData();
