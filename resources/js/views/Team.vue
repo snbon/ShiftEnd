@@ -16,7 +16,7 @@
           </v-card-title>
           <v-card-text>
             <!-- Location Selector for Owners -->
-            <v-row v-if="user?.role === 'owner' && locations.length > 1">
+            <v-row v-if="myRole === 'owner' && locations.length > 1">
               <v-col cols="12" md="6">
                 <v-select
                   v-model="selectedLocation"
@@ -36,7 +36,7 @@
               :loading="loading"
               class="mt-4"
             >
-              <template v-slot:item.role="{ item }">
+              <template #item.role="{ item }">
                 <v-chip
                   :color="getRoleColor(item.role)"
                   size="small"
@@ -45,7 +45,7 @@
                 </v-chip>
               </template>
 
-              <template v-slot:item.status="{ item }">
+              <template #item.status="{ item }">
                 <v-chip
                   :color="item.status === 'active' ? 'green' : (item.status === 'invitation_sent' ? 'blue' : 'orange')"
                   :text="item.status === 'invitation_sent' ? 'Invitation Sent' : item.status"
@@ -53,7 +53,7 @@
                 />
               </template>
 
-              <template v-slot:item.actions="{ item }">
+              <template #item.actions="{ item }">
                 <v-btn
                   v-if="item.status === 'invitation_sent'"
                   icon="mdi-email"
@@ -97,7 +97,7 @@
               :rules="[v => !!v || 'Role is required']"
             />
             <v-select
-              v-if="user?.role === 'owner' && locations.length > 1"
+              v-if="myRole === 'owner' && locations.length > 1"
               v-model="inviteLocationId"
               :items="locations"
               item-title="name"
@@ -246,29 +246,35 @@ const availableRoles = [
   { title: 'Manager', value: 'manager' },
 ];
 
+const myRole = computed(() => {
+  if (!user.value || !user.value.locations) return null;
+  const loc = user.value.locations.find(l => l.id === selectedLocation.value);
+  return loc?.pivot?.role || null;
+});
+
 const canInvite = computed(() => {
-  if (!user.value) return false;
-  return user.value.role === 'owner' || user.value.role === 'manager';
+  if (!myRole.value) return false;
+  return myRole.value === 'owner' || myRole.value === 'manager';
 });
 
 const canManageUser = (member) => {
-  if (!user.value) return false;
-  if (user.value.role === 'owner') return true;
-  if (user.value.role === 'manager' && member.role === 'employee') return true;
+  if (!myRole.value) return false;
+  if (myRole.value === 'owner') return true;
+  if (myRole.value === 'manager' && member.role === 'employee') return true;
   return false;
 };
 
 const canChangeRole = (member) => {
-  if (!user.value) return false;
-  if (user.value.role === 'owner') return true;
-  if (user.value.role === 'manager' && member.role === 'employee') return true;
+  if (!myRole.value) return false;
+  if (myRole.value === 'owner') return true;
+  if (myRole.value === 'manager' && member.role === 'employee') return true;
   return false;
 };
 
 const canRemoveUser = (member) => {
-  if (!user.value) return false;
-  if (user.value.role === 'owner') return true;
-  if (user.value.role === 'manager' && member.role === 'employee') return true;
+  if (!myRole.value) return false;
+  if (myRole.value === 'owner') return true;
+  if (myRole.value === 'manager' && member.role === 'employee') return true;
   return false;
 };
 
@@ -321,8 +327,8 @@ const fetchLocations = async () => {
 const fetchTeamMembers = async () => {
   loading.value = true;
   try {
-    const response = await axios.get('/api/users/team-with-invitations');
-    teamMembers.value = response.data.data || [];
+    const response = await axios.get(`/api/locations/${selectedLocation.value}/team`);
+    teamMembers.value = response.data.team || [];
   } catch (error) {
     console.error('Error loading team members:', error);
   } finally {
@@ -359,13 +365,11 @@ const openUserMenu = (user) => {
 
 const changeUserRole = async () => {
   if (!selectedUser.value || !newRole.value) return;
-
   roleChangeLoading.value = true;
   try {
-    await axios.put(`/api/users/${selectedUser.value.id}`, {
+    await axios.put(`/api/locations/${selectedLocation.value}/users/${selectedUser.value.id}/role`, {
       role: newRole.value,
     });
-
     showSnackbarMessage('Role updated successfully!', 'success');
     showRoleDialog.value = false;
     fetchTeamMembers();
@@ -379,9 +383,9 @@ const changeUserRole = async () => {
 
 const removeUser = async () => {
   if (!selectedUser.value) return;
-
+  if (!confirm('Are you sure you want to remove this user from the location? This action cannot be reverted.')) return;
   try {
-    await axios.delete(`/api/users/${selectedUser.value.id}`);
+    await axios.delete(`/api/locations/${selectedLocation.value}/users/${selectedUser.value.id}`);
     showSnackbarMessage('User removed from team successfully!', 'success');
     fetchTeamMembers();
   } catch (error) {

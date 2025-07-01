@@ -39,6 +39,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('api/users/{id}/role', [UserController::class, 'updateRole']);
     Route::delete('api/users/{id}/location', [UserController::class, 'removeFromLocation']);
     Route::get('api/users/team', [UserController::class, 'teamMembers']);
+
+    // New team endpoint
+    Route::get('api/locations/{id}/team', [LocationController::class, 'team']);
+
+    // Update user role in location
+    Route::put('api/locations/{location_id}/users/{user_id}/role', [App\Http\Controllers\Api\LocationController::class, 'updateUserRole']);
 });
 
 // Public invitation endpoints

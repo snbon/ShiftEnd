@@ -27,7 +27,9 @@ class Location extends Model
     // Users assigned to this location
     public function users()
     {
-        return $this->hasMany(User::class);
+        return $this->belongsToMany(User::class)
+            ->withPivot('role', 'status')
+            ->withTimestamps();
     }
 
     // Reports for this location

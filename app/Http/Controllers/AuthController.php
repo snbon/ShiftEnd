@@ -57,8 +57,11 @@ class AuthController extends Controller
      */
     public function user(Request $request)
     {
+        $user = Auth::user()->load(['locations' => function($q) {
+            $q->withPivot('role', 'status');
+        }]);
         return response()->json([
-            'user' => Auth::user()
+            'user' => $user
         ]);
     }
 
@@ -87,7 +90,6 @@ class AuthController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => bcrypt($validated['password']),
-            'role' => 'employee', // Default role
             'status' => 'active', // All users are active by default
         ]);
 

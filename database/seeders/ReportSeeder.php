@@ -16,10 +16,9 @@ class ReportSeeder extends Seeder
     public function run(): void
     {
         $locations = Location::all();
-        $users = User::whereNotNull('location_id')->get();
 
-        if ($locations->isEmpty() || $users->isEmpty()) {
-            return; // Skip if no locations or users with locations
+        if ($locations->isEmpty()) {
+            return; // Skip if no locations
         }
 
         // Create reports for the past 7 days
@@ -27,13 +26,19 @@ class ReportSeeder extends Seeder
             $date = now()->subDays($i);
 
             foreach ($locations as $location) {
-                $locationUsers = $users->where('location_id', $location->id);
+                $locationUsers = $location->users;
 
                 if ($locationUsers->isEmpty()) {
                     continue;
                 }
 
                 $user = $locationUsers->random();
+                $userRole = $user->pivot->role ?? 'employee';
+
+                // Find a manager for approval if needed
+                $manager = $locationUsers->first(function ($u) {
+                    return $u->pivot->role === 'manager';
+                });
 
                 Report::create([
                     'location_id' => $location->id,
@@ -53,8 +58,8 @@ class ReportSeeder extends Seeder
                     'inventory_notes' => $this->getRandomInventoryNotes(),
                     'shift_notes' => $this->getRandomShiftNotes(),
                     'status' => $this->getRandomStatus(),
-                    'approved_by' => $user->role === 'employee' ? $location->users()->where('role', 'manager')->first()?->id : null,
-                    'approved_at' => $user->role === 'employee' ? now() : null,
+                    'approved_by' => $userRole === 'employee' ? $manager?->id : null,
+                    'approved_at' => $userRole === 'employee' ? now() : null,
                 ]);
             }
         }

@@ -56,12 +56,18 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import axios from 'axios';
+import { useLocationStore } from './store/location';
 
 const router = useRouter();
 const route = useRoute();
 const user = ref(null);
 const loading = ref(false);
 const verificationMessage = ref('');
+const locationStore = useLocationStore();
+const currentLocationId = computed({
+  get: () => locationStore.currentLocationId,
+  set: (id) => locationStore.setLocation(id),
+});
 
 const isOnboardingPage = computed(() => route.path === '/onboarding');
 
@@ -78,25 +84,20 @@ const isPublicRoute = computed(() => {
 const isInvitePage = computed(() => route.path.startsWith('/invite/'));
 
 const menu = computed(() => {
-  if (user.value?.status === 'pending') {
-    return [
-      { title: 'Dashboard', to: '/', icon: 'mdi-view-dashboard' },
-      { title: 'Settings', to: '/settings', icon: 'mdi-cog' }
-    ];
-  }
+  const role = myRole.value;
   const baseMenu = [
     { title: 'Dashboard', to: '/', icon: 'mdi-view-dashboard' },
     { title: 'Add Report', to: '/add-report', icon: 'mdi-plus' },
     { title: 'History', to: '/history', icon: 'mdi-history' },
   ];
-  if (user.value?.role === 'owner') {
+  if (role === 'owner') {
     baseMenu.push(
       { title: 'Locations', to: '/locations', icon: 'mdi-store' },
       { title: 'Team', to: '/team', icon: 'mdi-account-group' },
       { title: 'Pending Users', to: '/pending-users', icon: 'mdi-account-clock' },
       { title: 'Settings', to: '/settings', icon: 'mdi-cog' }
     );
-  } else if (user.value?.role === 'manager') {
+  } else if (role === 'manager') {
     baseMenu.push(
       { title: 'Team', to: '/team', icon: 'mdi-account-group' },
       { title: 'Settings', to: '/settings', icon: 'mdi-cog' }
@@ -139,7 +140,11 @@ const checkAuth = async () => {
       const userResponse = await axios.get('/api/user');
       user.value = userResponse.data.user;
       localStorage.setItem('user', JSON.stringify(userResponse.data.user));
-      if (user.value.email_verified_at && !user.value.location_id && router.currentRoute.value.path !== '/onboarding') {
+      if (
+        user.value.email_verified_at &&
+        (!user.value.locations || user.value.locations.length === 0) &&
+        router.currentRoute.value.path !== '/onboarding'
+      ) {
         router.push('/onboarding');
       }
     } else {
@@ -168,11 +173,25 @@ const handleVerificationParams = () => {
   }
 };
 
+const myRole = computed(() => {
+  if (!user.value || !user.value.locations) return null;
+  const loc = user.value.locations.find(l => l.id === currentLocationId.value || user.value.locations[0]?.id);
+  return loc?.pivot?.role || null;
+});
+
 onMounted(() => {
   if (!isPublicRoute.value) {
     checkAuth();
   }
   handleVerificationParams();
+  // Set currentLocationId on login or user fetch
+  watch(user, (newUser) => {
+    if (newUser && newUser.locations && newUser.locations.length > 0) {
+      if (!locationStore.currentLocationId) {
+        locationStore.setLocation(newUser.default_location_id || newUser.locations[0].id);
+      }
+    }
+  }, { immediate: true });
 });
 
 // Also watch for route changes (SPA navigation)

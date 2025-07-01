@@ -54,19 +54,30 @@ class LocationSeeder extends Seeder
         ];
 
         foreach ($locations as $locationData) {
-            Location::create($locationData);
+            Location::firstOrCreate([
+                'name' => $locationData['name'],
+                'address' => $locationData['address'],
+            ], $locationData);
         }
 
-        // Assign users to locations
+        // Assign users to locations (avoid duplicates)
         $manager = User::where('email', 'manager@shiftend.com')->first();
         $employee = User::where('email', 'employee@shiftend.com')->first();
+        $lisa = User::where('email', 'lisa@shiftend.com')->first();
+        $tom = User::where('email', 'tom@shiftend.com')->first();
+        $firstLocation = Location::first();
 
-        if ($manager) {
-            $manager->update(['location_id' => Location::first()->id]);
+        if ($manager && $firstLocation && !$manager->locations->contains($firstLocation->id)) {
+            $manager->locations()->attach($firstLocation->id, ['role' => 'manager', 'status' => 'active']);
         }
-
-        if ($employee) {
-            $employee->update(['location_id' => Location::first()->id]);
+        if ($employee && $firstLocation && !$employee->locations->contains($firstLocation->id)) {
+            $employee->locations()->attach($firstLocation->id, ['role' => 'employee', 'status' => 'active']);
+        }
+        if ($lisa && $firstLocation && !$lisa->locations->contains($firstLocation->id)) {
+            $lisa->locations()->attach($firstLocation->id, ['role' => 'manager', 'status' => 'active']);
+        }
+        if ($tom && $firstLocation && !$tom->locations->contains($firstLocation->id)) {
+            $tom->locations()->attach($firstLocation->id, ['role' => 'employee', 'status' => 'active']);
         }
     }
 }

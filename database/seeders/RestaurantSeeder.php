@@ -36,20 +36,29 @@ class RestaurantSeeder extends Seeder
         ];
 
         foreach ($restaurants as $restaurantData) {
-            $restaurant = Restaurant::create($restaurantData);
+            $restaurant = Restaurant::firstOrCreate([
+                'name' => $restaurantData['name'],
+                'address' => $restaurantData['address'],
+            ], $restaurantData);
 
-            // Assign users to restaurants with roles
+            // Assign users to restaurants with roles (avoid duplicates)
             if ($restaurant->name === 'Downtown Bistro') {
-                $restaurant->users()->attach([
-                    $manager->id => ['role' => 'manager'],
-                    $employee->id => ['role' => 'employee'],
-                    $lisa->id => ['role' => 'manager'],
-                ]);
+                if ($manager && !$restaurant->users->contains($manager->id)) {
+                    $restaurant->users()->attach($manager->id, ['role' => 'manager']);
+                }
+                if ($employee && !$restaurant->users->contains($employee->id)) {
+                    $restaurant->users()->attach($employee->id, ['role' => 'employee']);
+                }
+                if ($lisa && !$restaurant->users->contains($lisa->id)) {
+                    $restaurant->users()->attach($lisa->id, ['role' => 'manager']);
+                }
             } else {
-                $restaurant->users()->attach([
-                    $lisa->id => ['role' => 'manager'],
-                    $tom->id => ['role' => 'employee'],
-                ]);
+                if ($lisa && !$restaurant->users->contains($lisa->id)) {
+                    $restaurant->users()->attach($lisa->id, ['role' => 'manager']);
+                }
+                if ($tom && !$restaurant->users->contains($tom->id)) {
+                    $restaurant->users()->attach($tom->id, ['role' => 'employee']);
+                }
             }
         }
     }

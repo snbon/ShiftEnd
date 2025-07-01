@@ -387,16 +387,17 @@ class InvitationController extends Controller
         // Check if user already exists
         $user = User::where('email', $validated['email'])->first();
         if ($user) {
-            if ($user->location_id) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You are already assigned to a location'
-                ], 400);
-            }
             // Auto-verify email if not already verified
             if (is_null($user->email_verified_at)) {
                 $user->email_verified_at = now();
                 $user->save();
+            }
+            // If not assigned to this location, attach
+            if ($user->locations()->where('location_id', $invitation->location_id)->doesntExist()) {
+                $user->locations()->attach($invitation->location_id, [
+                    'role' => $invitation->role,
+                    'status' => 'active',
+                ]);
             }
         } else {
             // Create user
@@ -404,9 +405,12 @@ class InvitationController extends Controller
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'password' => bcrypt($validated['password']),
-                'role' => $invitation->role,
                 'status' => 'active',
                 'email_verified_at' => now(), // Assume verified via invite
+            ]);
+            $user->locations()->attach($invitation->location_id, [
+                'role' => $invitation->role,
+                'status' => 'active',
             ]);
         }
 
@@ -416,13 +420,6 @@ class InvitationController extends Controller
                 'status' => 'accepted',
                 'accepted_at' => now(),
                 'accepted_by' => $user->id,
-            ]);
-
-            // Update user
-            $user->update([
-                'location_id' => $invitation->location_id,
-                'role' => $invitation->role,
-                'status' => 'active',
             ]);
         });
 

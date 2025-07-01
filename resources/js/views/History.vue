@@ -186,9 +186,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
+import { useLocationStore } from '../store/location';
 
 const router = useRouter();
 const reports = ref([]);
@@ -227,10 +228,15 @@ const headers = [
   { title: 'Actions', key: 'actions', sortable: false },
 ];
 
+const locationStore = useLocationStore();
+const currentLocationId = computed(() => locationStore.currentLocationId);
+
 const fetchReports = async () => {
   loading.value = true;
   try {
-    const response = await axios.get('/api/reports');
+    const response = await axios.get('/api/reports', {
+      params: { location_id: currentLocationId.value }
+    });
     reports.value = response.data.data || [];
   } catch (error) {
     console.error('Error fetching reports:', error);
@@ -336,5 +342,10 @@ const showErrorMessage = (msg) => {
 onMounted(() => {
   fetchUser();
   fetchReports();
+  window.addEventListener('location-changed', fetchReports);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('location-changed', fetchReports);
 });
 </script>

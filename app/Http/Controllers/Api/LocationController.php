@@ -18,11 +18,11 @@ class LocationController extends Controller
     {
         $user = Auth::user();
 
-        // Owners can see all their locations, others see only their assigned location
-        if ($user->isOwner()) {
-            $locations = Location::where('owner_id', $user->id)->get();
+        // Owners can see all their locations, others see only their assigned locations
+        if ($user->locations()->exists()) {
+            $locations = $user->locations;
         } else {
-            $locations = Location::where('id', $user->location_id)->get();
+            $locations = [];
         }
 
         return response()->json([
@@ -38,15 +38,6 @@ class LocationController extends Controller
     {
         $user = Auth::user();
 
-        // Allow any authenticated user to create a location (for onboarding)
-        // If they already have a location_id, they need to be an owner
-        if ($user->location_id && !$user->isOwner()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Only owners can create additional locations'
-            ], 403);
-        }
-
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'address' => 'nullable|string',
@@ -58,10 +49,17 @@ class LocationController extends Controller
             'owner_id' => $user->id,
         ]);
 
-        // Automatically assign the user to this location
-        $user->update([
-            'location_id' => $location->id,
+        // Assign the user as owner in the pivot table
+        $user->locations()->attach($location->id, [
+            'role' => 'owner',
+            'status' => 'active',
         ]);
+
+        // Set default_location_id if not set or if this is their first location
+        if (!$user->default_location_id) {
+            $user->default_location_id = $location->id;
+            $user->save();
+        }
 
         return response()->json([
             'success' => true,
@@ -79,20 +77,13 @@ class LocationController extends Controller
         $location = Location::findOrFail($id);
 
         // Check if user has access to this location
-        if ($user->isOwner()) {
-            if ($location->owner_id !== $user->id) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Access denied'
-                ], 403);
-            }
-        } else {
-            if ($location->id !== $user->location_id) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Access denied'
-                ], 403);
-            }
+        $isOwner = $location->owner_id === $user->id;
+        $isMember = $location->users()->where('user_id', $user->id)->exists();
+        if (!$isOwner && !$isMember) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied'
+            ], 403);
         }
 
         return response()->json([
@@ -170,5 +161,61 @@ class LocationController extends Controller
             'success' => true,
             'message' => 'Location deleted successfully'
         ]);
+    }
+
+    /**
+     * Get all team members for a location (with role/status).
+     */
+    public function team($id)
+    {
+        $location = Location::with(['users'])->findOrFail($id);
+        // Only allow if user is owner or belongs to this location
+        $user = auth()->user();
+        $isOwner = $location->owner_id === $user->id;
+        $isMember = $location->users->contains($user->id);
+        if (!$isOwner && !$isMember) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+        return response()->json([
+            'success' => true,
+            'team' => $location->users->map(function($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->pivot->role,
+                    'status' => $user->pivot->status,
+                ];
+            }),
+        ]);
+    }
+
+    /**
+     * Remove a user from a location (owner only).
+     */
+    public function removeUser($locationId, $userId)
+    {
+        $location = Location::findOrFail($locationId);
+        if (auth()->id() !== $location->owner_id) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+        $location->users()->detach($userId);
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Update a user's role in a location (owner only).
+     */
+    public function updateUserRole($locationId, $userId, Request $request)
+    {
+        $location = Location::findOrFail($locationId);
+        if (auth()->id() !== $location->owner_id) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+        $validated = $request->validate([
+            'role' => 'required|in:manager,employee',
+        ]);
+        $location->users()->updateExistingPivot($userId, ['role' => $validated['role']]);
+        return response()->json(['success' => true]);
     }
 }

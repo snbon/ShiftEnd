@@ -22,7 +22,7 @@ class EnsureUserHasLocation
             return $next($request);
         }
         // Allow if user has a location
-        if ($user->location_id) {
+        if ($user->locations()->exists()) {
             return $next($request);
         }
         // Allow onboarding, invitations, and logout endpoints

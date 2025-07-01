@@ -208,6 +208,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
+import { useLocationStore } from '../store/location';
 
 const router = useRouter();
 const report_date = ref('');
@@ -227,7 +228,13 @@ const showMessage = ref(false);
 const message = ref('');
 const messageType = ref('success');
 const user = ref(null);
-const userLocation = ref(null);
+const locationStore = useLocationStore();
+const currentLocationId = computed(() => locationStore.currentLocationId);
+
+const userLocation = computed(() => {
+  if (!user.value || !user.value.locations) return null;
+  return user.value.locations.find(l => l.id === currentLocationId.value);
+});
 
 const totalSales = computed(() => {
   return parseFloat(cash_sales.value || 0) + parseFloat(card_sales.value || 0);
@@ -264,8 +271,12 @@ const showErrorMessage = (msg) => {
 const submitReport = async (submitForApproval = false) => {
   loading.value = true;
   try {
+    // Ensure backend user location is set before submitting report
+    await axios.put('/api/users/me/location', { location_id: currentLocationId.value });
+
     // Convert empty strings to 0 for numeric fields
     const submitData = {
+      location_id: currentLocationId.value,
       report_date: report_date.value,
       shift_start_time: shift_start_time.value,
       shift_end_time: shift_end_time.value,
@@ -296,7 +307,12 @@ const submitReport = async (submitForApproval = false) => {
     }, 1500);
   } catch (error) {
     console.error('Error creating report:', error);
-    const errorMessage = error.response?.data?.message || 'Failed to create report';
+    let errorMessage = 'Failed to create report';
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.response?.data?.errors?.location_id) {
+      errorMessage = error.response.data.errors.location_id[0];
+    }
     showErrorMessage(errorMessage);
   } finally {
     loading.value = false;
@@ -312,12 +328,6 @@ const fetchUserAndLocation = async () => {
     // Fetch user data
     const userResponse = await axios.get('/api/user');
     user.value = userResponse.data.user;
-
-    // Fetch user's location if they have one
-    if (user.value?.location_id) {
-      const locationResponse = await axios.get(`/api/locations/${user.value.location_id}`);
-      userLocation.value = locationResponse.data.data;
-    }
   } catch (error) {
     console.error('Error fetching user/location data:', error);
   }

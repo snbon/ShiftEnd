@@ -21,11 +21,25 @@ class ReportController extends Controller
         $user = Auth::user();
         $query = Report::with(['user', 'location', 'approver']);
 
-        // Filter by user's current location
-        if ($user->location_id) {
-            $query->where('location_id', $user->location_id);
+        // Accept ?location_id=... to filter by a specific location
+        $locationId = request('location_id');
+        $locationIds = $user->locations()->pluck('locations.id')->toArray();
+        $ownedLocationIds = $user->ownedLocations()->pluck('id')->toArray();
+        $allLocationIds = array_unique(array_merge($locationIds, $ownedLocationIds));
+
+        if ($locationId) {
+            // Only allow if user is assigned/owner
+            if (!in_array($locationId, $allLocationIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You are not assigned to this location'
+                ], 403);
+            }
+            $query->where('location_id', $locationId);
+        } elseif (!empty($allLocationIds)) {
+            $query->whereIn('location_id', $allLocationIds);
         } else {
-            // If no location assigned, return empty
+            // If no locations assigned, return empty
             return response()->json([
                 'success' => true,
                 'data' => []
@@ -47,15 +61,8 @@ class ReportController extends Controller
     {
         $user = Auth::user();
 
-        // Users must be assigned to a location
-        if (!$user->location_id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You must be assigned to a location to create reports'
-            ], 400);
-        }
-
         $validated = $request->validate([
+            'location_id' => 'required|exists:locations,id',
             'report_date' => 'required|date',
             'shift_start_time' => 'required|date_format:H:i',
             'shift_end_time' => 'required|date_format:H:i|after:shift_start_time',
@@ -69,6 +76,17 @@ class ReportController extends Controller
             'shift_notes' => 'nullable|string',
         ]);
 
+        // Check if user is assigned to this location (owner or via pivot)
+        $locationId = $validated['location_id'];
+        $isOwner = \App\Models\Location::where('id', $locationId)->where('owner_id', $user->id)->exists();
+        $isAssigned = $user->locations()->where('locations.id', $locationId)->exists();
+        if (!$isOwner && !$isAssigned) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You must be assigned to this location to create reports'
+            ], 400);
+        }
+
         // Calculate totals
         $totalSales = $validated['cash_sales'] + $validated['card_sales'];
         $totalTips = $validated['tips_cash'] + $validated['tips_card'];
@@ -77,7 +95,7 @@ class ReportController extends Controller
         $report = Report::create([
             ...$validated,
             'user_id' => $user->id,
-            'location_id' => $user->location_id,
+            'location_id' => $locationId,
             'total_sales' => $totalSales,
             'total_tips' => $totalTips,
             'cash_difference' => $cashDifference,

@@ -75,7 +75,7 @@
                   <v-icon>mdi-shield</v-icon>
                 </template>
                 <v-list-item-title>Role</v-list-item-title>
-                <v-list-item-subtitle>{{ user?.role }}</v-list-item-subtitle>
+                <v-list-item-subtitle>{{ myRole }}</v-list-item-subtitle>
               </v-list-item>
             </v-list>
           </v-card-text>
@@ -84,7 +84,7 @@
     </v-row>
 
     <!-- Location Management (Owners Only) -->
-    <v-row v-if="user?.role === 'owner'">
+    <v-row v-if="myRole === 'owner'">
       <v-col cols="12">
         <v-card>
           <v-card-title class="d-flex justify-space-between align-center">
@@ -100,14 +100,14 @@
               :loading="loading"
               class="elevation-1"
             >
-              <template v-slot:item.is_active="{ item }">
+              <template #item.is_active="{ item }">
                 <v-chip
                   :color="item.is_active ? 'green' : 'grey'"
                   :text="item.is_active ? 'Active' : 'Inactive'"
                   size="small"
                 />
               </template>
-              <template v-slot:item.actions="{ item }">
+              <template #item.actions="{ item }">
                 <v-btn
                   icon="mdi-eye"
                   size="small"
@@ -135,7 +135,7 @@
     </v-row>
 
     <!-- Team Management (Owners and Managers) -->
-    <v-row v-if="user?.role === 'owner' || user?.role === 'manager'">
+    <v-row v-if="myRole === 'owner' || myRole === 'manager'">
       <v-col cols="12">
         <v-card>
           <v-card-title class="d-flex justify-space-between align-center">
@@ -151,21 +151,21 @@
               :loading="loading"
               class="elevation-1"
             >
-              <template v-slot:item.role="{ item }">
+              <template #item.role="{ item }">
                 <v-chip
                   :color="getRoleColor(item.role)"
                   :text="item.role"
                   size="small"
                 />
               </template>
-              <template v-slot:item.status="{ item }">
+              <template #item.status="{ item }">
                 <v-chip
                   :color="item.status === 'active' ? 'green' : (item.status === 'invitation_sent' ? 'blue' : 'orange')"
                   :text="item.status === 'invitation_sent' ? 'Invitation Sent' : item.status"
                   size="small"
                 />
               </template>
-              <template v-slot:item.actions="{ item }">
+              <template #item.actions="{ item }">
                 <v-btn
                   v-if="canManageUser(item)"
                   icon="mdi-pencil"
@@ -305,10 +305,10 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
+import { useLocationStore } from '../store/location';
 
 const router = useRouter();
 const user = ref(null);
-const currentLocation = ref(null);
 const userLocations = ref([]);
 const teamMembers = ref([]);
 const loading = ref(false);
@@ -325,7 +325,6 @@ const inviteEmail = ref('');
 const inviteRole = ref('employee');
 const editingUser = ref(null);
 const editingUserRole = ref('employee');
-const currentLocationId = ref(null);
 const inviteLocationId = ref(null);
 
 // Table headers
@@ -351,26 +350,42 @@ const roleOptions = [
   { title: 'Owner', value: 'owner' },
 ];
 
+const locationStore = useLocationStore();
+const currentLocationId = computed({
+  get: () => locationStore.currentLocationId,
+  set: (id) => locationStore.setLocation(id),
+});
+
+const myRole = computed(() => {
+  if (!user.value || !user.value.locations) return null;
+  const loc = user.value.locations.find(l => l.id === currentLocationId.value);
+  return loc?.pivot?.role || null;
+});
+
 const fetchData = async () => {
   loading.value = true;
   try {
-    const [userResponse, locationsResponse, teamResponse] = await Promise.all([
-      axios.get('/api/user'),
-      axios.get('/api/locations'),
-      axios.get('/api/users/team-with-invitations')
-    ]);
-
+    const userResponse = await axios.get('/api/user');
     user.value = userResponse.data.user;
-    currentLocation.value = userResponse.data.user.location;
-    userLocations.value = locationsResponse.data.data || [];
-    teamMembers.value = teamResponse.data.data || [];
-
-    // Set current location ID
-    currentLocationId.value = user.value.location_id;
+    userLocations.value = user.value.locations || [];
+    if (userLocations.value.length > 0 && !currentLocationId.value) {
+      currentLocationId.value = userLocations.value[0].id;
+    }
+    await fetchTeamMembers();
   } catch (error) {
     console.error('Error fetching data:', error);
   } finally {
     loading.value = false;
+  }
+};
+
+const fetchTeamMembers = async () => {
+  if (!currentLocationId.value) return;
+  try {
+    const response = await axios.get(`/api/locations/${currentLocationId.value}/team`);
+    teamMembers.value = response.data.team || [];
+  } catch (error) {
+    console.error('Error fetching team members:', error);
   }
 };
 
@@ -445,10 +460,10 @@ const deleteLocation = async (locationId) => {
 };
 
 const removeUser = async (userId) => {
-  if (confirm('Are you sure you want to remove this user from the location?')) {
+  if (confirm('Are you sure you want to remove this user from the location? This action cannot be reverted.')) {
     try {
-      await axios.delete(`/api/users/${userId}/location`);
-      await fetchData();
+      await axios.delete(`/api/locations/${currentLocationId.value}/users/${userId}`);
+      await fetchTeamMembers();
     } catch (error) {
       console.error('Error removing user:', error);
     }
@@ -474,29 +489,27 @@ const getRoleColor = (role) => {
 };
 
 const canManageUser = (targetUser) => {
-  if (user.value?.role === 'owner') return true;
-  if (user.value?.role === 'manager' && targetUser.role === 'employee') return true;
+  if (myRole.value === 'owner') return true;
+  if (myRole.value === 'manager' && targetUser.role === 'employee') return true;
   return false;
 };
 
 const canRemoveUser = (targetUser) => {
-  if (user.value?.role === 'owner') return true;
-  if (user.value?.role === 'manager' && targetUser.role === 'employee') return true;
+  if (myRole.value === 'owner') return true;
+  if (myRole.value === 'manager' && targetUser.role === 'employee') return true;
   return false;
 };
 
 const switchLocation = async () => {
-  try {
-    // Update user's current location and default location (they should be the same)
-    await axios.put(`/api/users/me/location`, {
-      location_id: currentLocationId.value
-    });
-
-    // Force page refresh to fetch new data for the selected location
-    window.location.reload();
-  } catch (error) {
-    console.error('Error switching location:', error);
-  }
+  await axios.put(`/api/users/me/location`, {
+    location_id: currentLocationId.value
+  });
+  // Refetch user and update localStorage
+  const userResponse = await axios.get('/api/user');
+  localStorage.setItem('user', JSON.stringify(userResponse.data.user));
+  // Emit a global event for location change
+  window.dispatchEvent(new CustomEvent('location-changed', { detail: { locationId: currentLocationId.value } }));
+  // Optionally, you can show a message or refetch local data here
 };
 
 const resendInvitation = async (item) => {
