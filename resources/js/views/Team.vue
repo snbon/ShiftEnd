@@ -47,11 +47,10 @@
 
               <template v-slot:item.status="{ item }">
                 <v-chip
-                  :color="getStatusColor(item.status)"
+                  :color="item.status === 'active' ? 'green' : (item.status === 'invitation_sent' ? 'blue' : 'orange')"
+                  :text="item.status === 'invitation_sent' ? 'Invitation Sent' : item.status"
                   size="small"
-                >
-                  {{ item.status }}
-                </v-chip>
+                />
               </template>
 
               <template v-slot:item.actions="{ item }">
@@ -76,22 +75,22 @@
         <v-card-text>
           <v-form @submit.prevent="sendInvitation" ref="inviteForm">
             <v-text-field
-              v-model="inviteForm.email"
+              v-model="inviteEmail"
               label="Email Address"
               type="email"
               required
               :rules="[v => !!v || 'Email is required', v => /.+@.+\..+/.test(v) || 'Email must be valid']"
             />
             <v-select
-              v-model="inviteForm.role"
+              v-model="inviteRole"
               :items="roleOptions"
               label="Role"
               required
               :rules="[v => !!v || 'Role is required']"
             />
             <v-select
-              v-if="user?.role === 'owner'"
-              v-model="inviteForm.location_id"
+              v-if="user?.role === 'owner' && locations.length > 1"
+              v-model="inviteLocationId"
               :items="locations"
               item-title="name"
               item-value="id"
@@ -203,6 +202,10 @@ const selectedLocation = ref(null);
 const teamMembers = ref([]);
 const invitations = ref([]);
 
+const inviteEmail = ref('');
+const inviteRole = ref('employee');
+const inviteLocationId = ref(null);
+
 const inviteForm = ref({
   email: '',
   role: '',
@@ -210,11 +213,10 @@ const inviteForm = ref({
 });
 
 const headers = [
-  { title: 'Name', key: 'name', sortable: true },
-  { title: 'Email', key: 'email', sortable: true },
-  { title: 'Role', key: 'role', sortable: true },
-  { title: 'Status', key: 'status', sortable: true },
-  { title: 'Joined', key: 'created_at', sortable: true },
+  { title: 'Name', key: 'name' },
+  { title: 'Email', key: 'email' },
+  { title: 'Role', key: 'role' },
+  { title: 'Status', key: 'status' },
   { title: 'Actions', key: 'actions', sortable: false },
 ];
 
@@ -305,22 +307,13 @@ const fetchLocations = async () => {
   }
 };
 
-const loadTeamMembers = async () => {
-  if (!selectedLocation.value) return;
-
+const fetchTeamMembers = async () => {
   loading.value = true;
   try {
-    // Fetch users at the selected location
-    const usersResponse = await axios.get(`/api/locations/${selectedLocation.value}`);
-    const location = usersResponse.data.data;
-    teamMembers.value = location.users || [];
-
-    // Fetch pending invitations
-    const invitationsResponse = await axios.get(`/api/invitations?location_id=${selectedLocation.value}`);
-    invitations.value = invitationsResponse.data.data || [];
+    const response = await axios.get('/api/users/team-with-invitations');
+    teamMembers.value = response.data.data || [];
   } catch (error) {
     console.error('Error loading team members:', error);
-    showErrorMessage('Failed to load team members');
   } finally {
     loading.value = false;
   }
@@ -329,22 +322,23 @@ const loadTeamMembers = async () => {
 const sendInvitation = async () => {
   inviteLoading.value = true;
   try {
-    const locationId = user.value.role === 'owner' ? inviteForm.value.location_id : user.value.location_id;
-
     await axios.post('/api/invitations', {
-      email: inviteForm.value.email,
-      role: inviteForm.value.role,
-      location_id: locationId,
+      email: inviteEmail.value,
+      role: inviteRole.value,
+      location_id: inviteLocationId.value || selectedLocation.value || user.value.location_id
     });
-
-    showSuccessMessage('Invitation sent successfully!');
     showInviteDialog.value = false;
-    inviteForm.value = { email: '', role: '', location_id: null };
-    loadTeamMembers();
+    inviteEmail.value = '';
+    inviteRole.value = 'employee';
+    inviteLocationId.value = null;
+    message.value = 'Invitation sent!';
+    messageType.value = 'success';
+    showMessage.value = true;
+    fetchTeamMembers();
   } catch (error) {
-    console.error('Error sending invitation:', error);
-    const errorMessage = error.response?.data?.message || 'Failed to send invitation';
-    showErrorMessage(errorMessage);
+    message.value = error.response?.data?.message || 'Failed to send invitation.';
+    messageType.value = 'error';
+    showMessage.value = true;
   } finally {
     inviteLoading.value = false;
   }
@@ -367,7 +361,7 @@ const changeUserRole = async () => {
 
     showSuccessMessage('Role updated successfully!');
     showRoleDialog.value = false;
-    loadTeamMembers();
+    fetchTeamMembers();
   } catch (error) {
     console.error('Error updating role:', error);
     showErrorMessage('Failed to update role');
@@ -382,7 +376,7 @@ const removeUser = async () => {
   try {
     await axios.delete(`/api/users/${selectedUser.value.id}`);
     showSuccessMessage('User removed from team successfully!');
-    loadTeamMembers();
+    fetchTeamMembers();
   } catch (error) {
     console.error('Error removing user:', error);
     showErrorMessage('Failed to remove user');
@@ -392,6 +386,6 @@ const removeUser = async () => {
 onMounted(async () => {
   await fetchUser();
   await fetchLocations();
-  await loadTeamMembers();
+  await fetchTeamMembers();
 });
 </script>

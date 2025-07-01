@@ -33,6 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // User routes
     Route::get('api/users/pending', [UserController::class, 'pending']);
+    Route::get('api/users/team-with-invitations', [UserController::class, 'teamWithInvitations']);
     Route::put('api/users/me/role', [UserController::class, 'updateMyRole']);
     Route::put('api/users/me/location', [UserController::class, 'updateCurrentLocation']);
     Route::put('api/users/{id}/role', [UserController::class, 'updateRole']);

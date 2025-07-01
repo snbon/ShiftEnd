@@ -160,8 +160,8 @@
               </template>
               <template v-slot:item.status="{ item }">
                 <v-chip
-                  :color="item.status === 'active' ? 'green' : 'orange'"
-                  :text="item.status"
+                  :color="item.status === 'active' ? 'green' : (item.status === 'invitation_sent' ? 'blue' : 'orange')"
+                  :text="item.status === 'invitation_sent' ? 'Invitation Sent' : item.status"
                   size="small"
                 />
               </template>
@@ -242,6 +242,16 @@
               required
               :rules="[v => !!v || 'Role is required']"
             />
+            <v-select
+              v-if="userLocations.length > 1"
+              v-model="inviteLocationId"
+              :items="userLocations"
+              item-title="name"
+              item-value="id"
+              label="Location"
+              required
+              :rules="[v => !!v || 'Location is required']"
+            />
           </v-form>
         </v-card-text>
         <v-card-actions>
@@ -299,6 +309,7 @@ const inviteRole = ref('employee');
 const editingUser = ref(null);
 const editingUserRole = ref('employee');
 const currentLocationId = ref(null);
+const inviteLocationId = ref(null);
 
 // Table headers
 const locationHeaders = [
@@ -329,7 +340,7 @@ const fetchData = async () => {
     const [userResponse, locationsResponse, teamResponse] = await Promise.all([
       axios.get('/api/user'),
       axios.get('/api/locations'),
-      axios.get('/api/users/pending')
+      axios.get('/api/users/team-with-invitations')
     ]);
 
     user.value = userResponse.data.user;
@@ -337,7 +348,7 @@ const fetchData = async () => {
     userLocations.value = locationsResponse.data.data || [];
     teamMembers.value = teamResponse.data.data || [];
 
-    // Set current and default location IDs
+    // Set current location ID
     currentLocationId.value = user.value.location_id;
   } catch (error) {
     console.error('Error fetching data:', error);
@@ -370,11 +381,13 @@ const inviteUser = async () => {
   try {
     await axios.post('/api/invitations', {
       email: inviteEmail.value,
-      role: inviteRole.value
+      role: inviteRole.value,
+      location_id: inviteLocationId.value || currentLocationId.value
     });
     showInviteUser.value = false;
     inviteEmail.value = '';
     inviteRole.value = 'employee';
+    inviteLocationId.value = null;
   } catch (error) {
     console.error('Error inviting user:', error);
   } finally {

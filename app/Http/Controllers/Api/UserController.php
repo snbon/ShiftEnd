@@ -247,4 +247,48 @@ class UserController extends Controller
             'message' => 'User removed from location successfully'
         ]);
     }
+
+    /**
+     * Get team members and pending invitations for current user's location.
+     */
+    public function teamWithInvitations(): JsonResponse
+    {
+        $user = Auth::user();
+
+        if (!$user->location_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No location assigned'
+            ], 400);
+        }
+
+        $teamMembers = User::where('location_id', $user->location_id)
+            ->orderBy('role', 'desc')
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'role', 'status', 'created_at']);
+
+        $pendingInvitations = \App\Models\Invitation::where('location_id', $user->location_id)
+            ->where('status', 'pending')
+            ->get()
+            ->map(function ($inv) {
+                return [
+                    'id' => 'invitation-' . $inv->id,
+                    'name' => null,
+                    'email' => $inv->email,
+                    'role' => $inv->role,
+                    'status' => 'invitation_sent',
+                    'created_at' => $inv->created_at,
+                ];
+            });
+
+        $all = $teamMembers->toArray();
+        foreach ($pendingInvitations as $inv) {
+            $all[] = $inv;
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $all
+        ]);
+    }
 }

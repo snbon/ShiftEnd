@@ -127,6 +127,9 @@ class InvitationController extends Controller
             'status' => 'pending',
         ]);
 
+        // Send invitation email
+        \Mail::to($invitation->email)->send(new \App\Mail\InvitationMail($invitation, $location, $user));
+
         return response()->json([
             'success' => true,
             'message' => 'Invitation sent successfully',
