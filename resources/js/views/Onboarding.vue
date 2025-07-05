@@ -195,7 +195,7 @@ const createLocation = async () => {
 
     // Redirect to dashboard after a short delay
     setTimeout(() => {
-      router.push('/');
+      window.location.href = '/';
     }, 1500);
   } catch (error) {
     console.error('Error creating location:', error);
@@ -214,7 +214,7 @@ const joinWithCode = async () => {
 
     // Redirect to dashboard after a short delay
     setTimeout(() => {
-      router.push('/');
+      window.location.href = '/';
     }, 1500);
   } catch (error) {
     console.error('Error joining with code:', error);

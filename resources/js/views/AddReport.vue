@@ -303,7 +303,7 @@ const submitReport = async (submitForApproval = false) => {
 
     // Redirect to dashboard after a short delay
     setTimeout(() => {
-      router.push('/');
+      window.location.href = '/';
     }, 1500);
   } catch (error) {
     console.error('Error creating report:', error);

@@ -16,6 +16,7 @@ class Kernel extends HttpKernel
     protected $routeMiddleware = [
         // ... existing code ...
         'has.location' => \App\Http\Middleware\EnsureUserHasLocation::class,
+        'permission' => \App\Http\Middleware\CheckPermission::class,
     ];
 
     /**

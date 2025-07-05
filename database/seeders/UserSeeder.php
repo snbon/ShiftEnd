@@ -20,31 +20,41 @@ class UserSeeder extends Seeder
                 'name' => 'John Owner',
                 'email' => 'owner@shiftend.com',
                 'password' => Hash::make('password'),
+                'role' => 'owner',
             ],
             [
                 'name' => 'Sarah Manager',
                 'email' => 'manager@shiftend.com',
                 'password' => Hash::make('password'),
+                'role' => 'manager',
             ],
             [
                 'name' => 'Mike Employee',
                 'email' => 'employee@shiftend.com',
                 'password' => Hash::make('password'),
+                'role' => 'employee',
             ],
             [
                 'name' => 'Lisa Manager',
                 'email' => 'lisa@shiftend.com',
                 'password' => Hash::make('password'),
+                'role' => 'manager',
             ],
             [
                 'name' => 'Tom Employee',
                 'email' => 'tom@shiftend.com',
                 'password' => Hash::make('password'),
+                'role' => 'employee',
             ],
         ];
 
         foreach ($users as $userData) {
-            User::firstOrCreate(['email' => $userData['email']], $userData);
+            $user = User::firstOrCreate(['email' => $userData['email']], $userData);
+
+            // Update role if user already exists
+            if ($user->wasRecentlyCreated === false) {
+                $user->update(['role' => $userData['role']]);
+            }
         }
     }
 }

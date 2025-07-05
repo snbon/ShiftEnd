@@ -93,13 +93,13 @@ const menu = computed(() => {
   if (role === 'owner') {
     baseMenu.push(
       { title: 'Locations', to: '/locations', icon: 'mdi-store' },
-      { title: 'Team', to: '/team', icon: 'mdi-account-group' },
+      { title: 'Enhanced Team Management', to: '/enhanced-team', icon: 'mdi-account-group' },
       { title: 'Pending Users', to: '/pending-users', icon: 'mdi-account-clock' },
       { title: 'Settings', to: '/settings', icon: 'mdi-cog' }
     );
   } else if (role === 'manager') {
     baseMenu.push(
-      { title: 'Team', to: '/team', icon: 'mdi-account-group' },
+      { title: 'Enhanced Team Management', to: '/enhanced-team', icon: 'mdi-account-group' },
       { title: 'Settings', to: '/settings', icon: 'mdi-cog' }
     );
   } else {

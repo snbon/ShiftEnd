@@ -237,9 +237,9 @@ const registerInvitedUser = async () => {
       password: registerPassword.value,
       password_confirmation: registerPasswordConfirm.value,
     });
-    registerSuccess.value = 'Account created and joined! You can now log in.';
+    registerSuccess.value = 'Registration successful! Please check your email to verify your account.';
     setTimeout(() => {
-      router.push({ path: '/login', query: { message: 'Registration successful! You can now log in.' } });
+      router.push({ path: '/login', query: { message: 'Registration successful! Please check your email to verify your account.' } });
     }, 2000);
   } catch (error) {
     registerError.value = error.response?.data?.message || 'Registration failed. Please try again.';

@@ -387,11 +387,7 @@ class InvitationController extends Controller
         // Check if user already exists
         $user = User::where('email', $validated['email'])->first();
         if ($user) {
-            // Auto-verify email if not already verified
-            if (is_null($user->email_verified_at)) {
-                $user->email_verified_at = now();
-                $user->save();
-            }
+            // Do NOT auto-verify email for existing users
             // If not assigned to this location, attach
             if ($user->locations()->where('location_id', $invitation->location_id)->doesntExist()) {
                 $user->locations()->attach($invitation->location_id, [
@@ -399,19 +395,28 @@ class InvitationController extends Controller
                     'status' => 'active',
                 ]);
             }
+            // Also set user's location_id if not already set
+            if ($user->location_id !== $invitation->location_id) {
+                $user->location_id = $invitation->location_id;
+                $user->save();
+            }
         } else {
-            // Create user
+            // Create user (do NOT set email_verified_at)
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'password' => bcrypt($validated['password']),
                 'status' => 'active',
-                'email_verified_at' => now(), // Assume verified via invite
             ]);
             $user->locations()->attach($invitation->location_id, [
                 'role' => $invitation->role,
                 'status' => 'active',
             ]);
+            // Set user's location_id
+            $user->location_id = $invitation->location_id;
+            $user->save();
+            // Send email verification
+            $user->sendEmailVerificationNotification();
         }
 
         \DB::transaction(function () use ($invitation, $user) {
@@ -425,7 +430,7 @@ class InvitationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Invitation accepted successfully',
+            'message' => 'Registration successful! Please check your email to verify your account.',
             'data' => $invitation->load(['location', 'inviter'])
         ]);
     }

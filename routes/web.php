@@ -45,6 +45,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Update user role in location
     Route::put('api/locations/{location_id}/users/{user_id}/role', [App\Http\Controllers\Api\LocationController::class, 'updateUserRole']);
+
+    // Enhanced User Management routes (owners only)
+    Route::prefix('api/user-management')->group(function () {
+        Route::get('users', [App\Http\Controllers\Api\UserManagementController::class, 'getAllUsers']);
+        Route::get('locations', [App\Http\Controllers\Api\UserManagementController::class, 'getAvailableLocations']);
+        Route::post('users/{userId}/assign-locations', [App\Http\Controllers\Api\UserManagementController::class, 'assignToLocations']);
+        Route::post('users/{userId}/remove-location', [App\Http\Controllers\Api\UserManagementController::class, 'removeFromLocation']);
+        Route::get('locations/{locationId}/roles/{role}/permissions', [App\Http\Controllers\Api\UserManagementController::class, 'getRolePermissions']);
+        Route::put('locations/{locationId}/roles/{role}/permissions', [App\Http\Controllers\Api\UserManagementController::class, 'updateRolePermissions']);
+    });
 });
 
 // Public invitation endpoints
@@ -77,7 +87,7 @@ Route::get('/email/verify/{id}/{hash}', function ($id, $hash) {
         // Mark as verified
         $user->markEmailAsVerified();
 
-        return redirect('/?verified=1');
+        return redirect('/login?verified=1');
     } catch (\Exception $e) {
         return redirect('/?verification_error=1&message=Verification failed');
     }

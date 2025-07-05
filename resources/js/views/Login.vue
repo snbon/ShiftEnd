@@ -42,6 +42,9 @@
             </v-card-actions>
 
             <v-card-text class="text-center">
+              <v-alert v-if="verifiedMessage" type="success" class="mb-4">
+                {{ verifiedMessage }}
+              </v-alert>
               <v-alert v-if="error" type="error" class="mb-4">
                 {{ error }}
                 <template v-if="error === 'Please verify your email before logging in.'">
@@ -86,6 +89,7 @@ const loading = ref(false);
 const error = ref('');
 const resendMessage = ref('');
 const resending = ref(false);
+const verifiedMessage = ref('');
 
 const login = async () => {
   loading.value = true;
@@ -140,6 +144,10 @@ onMounted(() => {
   if (message) {
     resendMessage.value = decodeURIComponent(message);
     // Clear the URL parameter
+    router.replace({ path: route.path, query: {} });
+  }
+  if (urlParams.get('verified') === '1') {
+    verifiedMessage.value = 'Email verified successfully! You can now log in.';
     router.replace({ path: route.path, query: {} });
   }
 });
