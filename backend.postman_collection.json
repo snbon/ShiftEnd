@@ -112,6 +112,633 @@
           }
         }
       ]
+    },
+    {
+      "name": "Locations",
+      "item": [
+        {
+          "name": "List Locations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/locations",
+              "host": ["{{base_url}}"],
+              "path": ["api", "locations"]
+            },
+            "description": "Display a listing of the resource. Owners see all their locations, others see only their assigned locations. (auth required)"
+          }
+        },
+        {
+          "name": "Create Location",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Location Name\",\n  \"address\": \"123 Main St\",\n  \"phone\": \"123-456-7890\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/locations",
+              "host": ["{{base_url}}"],
+              "path": ["api", "locations"]
+            },
+            "description": "Store a newly created location. (auth required)"
+          }
+        },
+        {
+          "name": "Show Location",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/locations/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "locations", ":id"]
+            },
+            "description": "Display the specified location. (auth required)"
+          }
+        },
+        {
+          "name": "Update Location",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Location Name\",\n  \"address\": \"123 Main St\",\n  \"phone\": \"123-456-7890\",\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/locations/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "locations", ":id"]
+            },
+            "description": "Update the specified location. Only owners can update their locations. (auth required)"
+          }
+        },
+        {
+          "name": "Delete Location",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/locations/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "locations", ":id"]
+            },
+            "description": "Remove the specified location. Only owners can delete their locations. (auth required)"
+          }
+        },
+        {
+          "name": "Get Team Members for Location",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/locations/:id/team",
+              "host": ["{{base_url}}"],
+              "path": ["api", "locations", ":id", "team"]
+            },
+            "description": "Get all team members for a location (with role/status). (auth required)"
+          }
+        },
+        {
+          "name": "Update User Role in Location",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"manager\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/locations/:location_id/users/:user_id/role",
+              "host": ["{{base_url}}"],
+              "path": ["api", "locations", ":location_id", "users", ":user_id", "role"]
+            },
+            "description": "Update a user's role in a location (owner only). (auth required)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "List Reports",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/reports",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reports"]
+            },
+            "description": "Display a listing of reports. Can filter by location_id. (auth required)"
+          }
+        },
+        {
+          "name": "Create Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"location_id\": 1,\n  \"report_date\": \"2024-07-01\",\n  \"shift_start_time\": \"09:00\",\n  \"shift_end_time\": \"17:00\",\n  \"cash_sales\": 100,\n  \"card_sales\": 200,\n  \"opening_cash\": 50,\n  \"closing_cash\": 60,\n  \"tips_cash\": 10,\n  \"tips_card\": 20\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/reports",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reports"]
+            },
+            "description": "Store a newly created report. (auth required)"
+          }
+        },
+        {
+          "name": "Show Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/reports/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reports", ":id"]
+            },
+            "description": "Display the specified report. (auth required)"
+          }
+        },
+        {
+          "name": "Update Report",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"report_date\": \"2024-07-01\",\n  \"shift_start_time\": \"09:00\",\n  \"shift_end_time\": \"17:00\",\n  \"cash_sales\": 100,\n  \"card_sales\": 200,\n  \"opening_cash\": 50,\n  \"closing_cash\": 60,\n  \"tips_cash\": 10,\n  \"tips_card\": 20\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/reports/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reports", ":id"]
+            },
+            "description": "Update the specified report. Only the report creator can update it, and only if it's still a draft. (auth required)"
+          }
+        },
+        {
+          "name": "Delete Report",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/reports/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reports", ":id"]
+            },
+            "description": "Remove the specified report. Only the report creator can delete it, and only if it's still a draft. (auth required)"
+          }
+        },
+        {
+          "name": "Submit Report",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/reports/:id/submit",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reports", ":id", "submit"]
+            },
+            "description": "Submit a report for approval. (auth required)"
+          }
+        },
+        {
+          "name": "Approve/Reject Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"approve\",\n  \"notes\": \"Optional notes\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/reports/:id/approve",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reports", ":id", "approve"]
+            },
+            "description": "Approve or reject a report. Only managers and owners can approve reports. (auth required)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invitations",
+      "item": [
+        {
+          "name": "List Invitations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/invitations",
+              "host": ["{{base_url}}"],
+              "path": ["api", "invitations"]
+            },
+            "description": "Display a listing of invitations for a location. (auth required, location_id query param required)"
+          }
+        },
+        {
+          "name": "Create Invitation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"invitee@example.com\",\n  \"role\": \"employee\",\n  \"location_id\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/invitations",
+              "host": ["{{base_url}}"],
+              "path": ["api", "invitations"]
+            },
+            "description": "Store a newly created invitation. (auth required)"
+          }
+        },
+        {
+          "name": "Show Invitation",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/invitations/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "invitations", ":id"]
+            },
+            "description": "Display the specified invitation. (auth required)"
+          }
+        },
+        {
+          "name": "Update Invitation",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"invitee@example.com\",\n  \"role\": \"employee\",\n  \"location_id\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/invitations/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "invitations", ":id"]
+            },
+            "description": "Update the specified invitation. (auth required)"
+          }
+        },
+        {
+          "name": "Delete Invitation",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/invitations/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "invitations", ":id"]
+            },
+            "description": "Cancel/delete an invitation. (auth required)"
+          }
+        },
+        {
+          "name": "Resend Invitation Email",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/invitations/:id/resend",
+              "host": ["{{base_url}}"],
+              "path": ["api", "invitations", ":id", "resend"]
+            },
+            "description": "Resend an invitation email. (auth required)"
+          }
+        },
+        {
+          "name": "Accept Invitation (auth)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/invitations/:inviteCode/accept",
+              "host": ["{{base_url}}"],
+              "path": ["api", "invitations", ":inviteCode", "accept"]
+            },
+            "description": "Accept an invitation (authenticated). (auth required)"
+          }
+        },
+        {
+          "name": "Show Invitation (public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/invitations/public/:inviteCode",
+              "host": ["{{base_url}}"],
+              "path": ["api", "invitations", "public", ":inviteCode"]
+            },
+            "description": "Show invitation details by invite code (no auth required)"
+          }
+        },
+        {
+          "name": "Accept Invitation (public)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"invitee@example.com\",\n  \"name\": \"Invitee Name\",\n  \"password\": \"password\",\n  \"password_confirmation\": \"password\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/invitations/public/:inviteCode/accept",
+              "host": ["{{base_url}}"],
+              "path": ["api", "invitations", "public", ":inviteCode", "accept"]
+            },
+            "description": "Accept invitation by invite code (no auth required). Expects: email (must match invitation), name, password, password_confirmation."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get Pending Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/pending",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "pending"]
+            },
+            "description": "Get pending users (owners only). (auth required)"
+          }
+        },
+        {
+          "name": "Get Team With Invitations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/team-with-invitations",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "team-with-invitations"]
+            },
+            "description": "Get team members with invitations. (auth required)"
+          }
+        },
+        {
+          "name": "Update My Role",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"employee\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/me/role",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "me", "role"]
+            },
+            "description": "Update current user's role (for onboarding). (auth required)"
+          }
+        },
+        {
+          "name": "Update My Location",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"location_id\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/me/location",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "me", "location"]
+            },
+            "description": "Update current user's location. (auth required)"
+          }
+        },
+        {
+          "name": "Update User Role",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"manager\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/:id/role",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", ":id", "role"]
+            },
+            "description": "Update user role (owners only). (auth required)"
+          }
+        },
+        {
+          "name": "Remove User From Location",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/:id/location",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", ":id", "location"]
+            },
+            "description": "Remove user from location. (auth required)"
+          }
+        },
+        {
+          "name": "Get Team Members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/team",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "team"]
+            },
+            "description": "Get team members for current user's location. (auth required)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "User Management (Owner Only)",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/user-management/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user-management", "users"]
+            },
+            "description": "Get all users across all locations owned by the current user. (owner only, auth required)"
+          }
+        },
+        {
+          "name": "Get Available Locations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/user-management/locations",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user-management", "locations"]
+            },
+            "description": "Get available locations for user assignment. (owner only, auth required)"
+          }
+        },
+        {
+          "name": "Assign User to Locations",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"location_assignments\": [\n    {\n      \"location_id\": 1,\n      \"role\": \"manager\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/user-management/users/:userId/assign-locations",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user-management", "users", ":userId", "assign-locations"]
+            },
+            "description": "Assign user to multiple locations. (owner only, auth required)"
+          }
+        },
+        {
+          "name": "Remove User from Location",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"location_id\": 1,\n  \"confirmation\": \"CONFIRM_REMOVE_USER\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/user-management/users/:userId/remove-location",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user-management", "users", ":userId", "remove-location"]
+            },
+            "description": "Remove user from location. (owner only, auth required)"
+          }
+        },
+        {
+          "name": "Get Role Permissions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/user-management/locations/:locationId/roles/:role/permissions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user-management", "locations", ":locationId", "roles", ":role", "permissions"]
+            },
+            "description": "Get permissions for a specific role in a location. (owner only, auth required)"
+          }
+        },
+        {
+          "name": "Update Role Permissions",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissions\": [\n    {\n      \"permission_id\": 1,\n      \"granted\": true\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/user-management/locations/:locationId/roles/:role/permissions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user-management", "locations", ":locationId", "roles", ":role", "permissions"]
+            },
+            "description": "Update permissions for a role in a location. (owner only, auth required)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Email Verification",
+      "item": [
+        {
+          "name": "Verify Email",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/email/verify/:id/:hash",
+              "host": ["{{base_url}}"],
+              "path": ["email", "verify", ":id", ":hash"]
+            },
+            "description": "Verify user email address. (public)"
+          }
+        },
+        {
+          "name": "Show Verify Email Notice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/email/verify",
+              "host": ["{{base_url}}"],
+              "path": ["email", "verify"]
+            },
+            "description": "Show the email verification notice. (auth required)"
+          }
+        },
+        {
+          "name": "Send Verification Notification",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/email/verification-notification",
+              "host": ["{{base_url}}"],
+              "path": ["email", "verification-notification"]
+            },
+            "description": "Send a new email verification notification. (auth required)"
+          }
+        }
+      ]
     }
   ]
 }
