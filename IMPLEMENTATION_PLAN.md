@@ -220,6 +220,15 @@ Before starting any implementation task, ALWAYS reference:
 
 ## 🔄 IMPLEMENTATION WORKFLOW
 
+### **Branching Strategy**
+For each new feature we work on:
+1. **Create Feature Branch**: Create a new branch from `dev` for each feature
+2. **Implement Feature**: Work on the feature in the new branch
+3. **Agent Review**: Agent asks "Can we now merge this feature to dev?"
+4. **Merge to Dev**: Merge the feature branch to `dev` branch
+5. **Return to Dev**: Switch back to `dev` branch
+6. **Repeat**: Continue this cycle for each new feature
+
 ### **For Each Task:**
 
 1. **PRE-IMPLEMENTATION CHECK**:
@@ -227,6 +236,7 @@ Before starting any implementation task, ALWAYS reference:
    - [ ] Read relevant sections in MVP_ANALYSIS.md
    - [ ] Read relevant sections in USER_STORIES.md
    - [ ] Understand current state vs requirements
+   - [ ] Create new feature branch from `dev`
 
 2. **BACKEND IMPLEMENTATION** (if needed):
    - [ ] Create/update controller methods
@@ -262,6 +272,12 @@ Before starting any implementation task, ALWAYS reference:
    - [ ] Check for any missed requirements
    - [ ] Ensure no regression issues
    - [ ] Confirm user flows work as expected
+
+7. **MERGE TO DEV**:
+   - [ ] Agent asks: "Can we now merge this feature to dev?"
+   - [ ] Merge feature branch to `dev`
+   - [ ] Switch back to `dev` branch
+   - [ ] Push changes to remote `dev` branch
 
 ## 🎯 SUCCESS CRITERIA
 
