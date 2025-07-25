@@ -19,16 +19,22 @@ class AuthController extends Controller
         ]);
 
         if (Auth::attempt($credentials)) {
-            $request->session()->regenerate();
             $user = Auth::user();
+
+            // Check if email is verified
             if (is_null($user->email_verified_at)) {
                 Auth::logout();
                 return response()->json([
                     'message' => 'Please verify your email before logging in.'
                 ], 403);
             }
+
+            // Create token
+            $token = $user->createToken('auth-token')->plainTextToken;
+
             return response()->json([
                 'user' => $user,
+                'token' => $token,
                 'message' => 'Login successful'
             ]);
         }
@@ -43,9 +49,10 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        Auth::logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        // Revoke the token that was used to authenticate the current request
+        if ($request->user()) {
+            $request->user()->tokens()->delete();
+        }
 
         return response()->json([
             'message' => 'Logout successful'

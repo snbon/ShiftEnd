@@ -6,7 +6,7 @@ Hello,
 {{ $inviter->name }} ({{ $inviter->email }}) has invited you to join the team at **{{ $location->name }}** as a
 **{{ ucfirst($invitation->role) }}**.
 
-@component('mail::button', ['url' => url('/invite/' . $invitation->invite_code)])
+@component('mail::button', ['url' => 'https://demo.shiftend.be/invite/' . $invitation->invite_code])
 Accept Invitation
 @endcomponent
 
