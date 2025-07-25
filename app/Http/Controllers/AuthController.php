@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use App\Models\User;
 
 class AuthController extends Controller
@@ -64,19 +65,38 @@ class AuthController extends Controller
      */
     public function user(Request $request)
     {
-        $user = Auth::user()->load(['locations' => function($q) {
-            $q->withPivot('role', 'status');
-        }, 'defaultLocation']);
+        try {
+            $user = Auth::user();
 
-        // Set the user's role from the location_user pivot table
-        if ($user->locations && $user->locations->count() > 0) {
-            // Get the first location's role (or you could use defaultLocation if set)
-            $user->role = $user->locations->first()->pivot->role;
+            if (!$user) {
+                return response()->json([
+                    'error' => 'User not authenticated'
+                ], 401);
+            }
+
+            $user->load(['locations' => function($q) {
+                $q->withPivot('role', 'status');
+            }, 'defaultLocation']);
+
+            // Set the user's role from the location_user pivot table
+            if ($user->locations && $user->locations->count() > 0) {
+                // Get the first location's role (or you could use defaultLocation if set)
+                $user->role = $user->locations->first()->pivot->role;
+            } else {
+                // User has no locations yet - this is normal for new users
+                $user->role = null;
+            }
+
+            return response()->json([
+                'user' => $user
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in user endpoint: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Internal server error',
+                'message' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'user' => $user
-        ]);
     }
 
     /**
