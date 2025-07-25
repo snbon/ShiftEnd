@@ -37,12 +37,13 @@ For each new feature we work on:
 5. **Return to Dev**
    ```bash
    git checkout dev
-   git branch -d feature/feature-name  # Delete local feature branch
+   # Keep feature branch for historical reference
    ```
 
 6. **Repeat**
    - Continue this cycle for each new feature
    - Always start new features from `dev` branch
+   - Feature branches remain for historical reference
 
 ## 📋 Workflow Checklist
 
@@ -69,7 +70,7 @@ For each new feature we work on:
 - [ ] Switch back to `dev` branch
 - [ ] Push changes to remote `dev`
 - [ ] Verify deployment works correctly
-- [ ] Delete feature branch
+- [ ] Keep feature branch for historical reference
 
 ## 🎯 Best Practices
 
@@ -132,7 +133,7 @@ For each new feature we work on:
    git checkout dev
    git merge feature/user-management
    git push origin dev
-   git branch -d feature/user-management
+   # Keep feature branch for historical reference
    ```
 
 5. **Deploy**
@@ -147,6 +148,7 @@ For each new feature we work on:
 - **Update documentation**: Keep analysis documents current
 - **Clear commits**: Use descriptive commit messages
 - **No direct pushes to main**: All changes go through `dev` first
+- **Keep feature branches**: Don't delete feature branches for historical reference
 
 ---
 

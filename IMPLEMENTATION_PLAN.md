@@ -278,6 +278,7 @@ For each new feature we work on:
    - [ ] Merge feature branch to `dev`
    - [ ] Switch back to `dev` branch
    - [ ] Push changes to remote `dev` branch
+   - [ ] Keep feature branch for historical reference
 
 ## 🎯 SUCCESS CRITERIA
 
