@@ -66,7 +66,14 @@ class AuthController extends Controller
     {
         $user = Auth::user()->load(['locations' => function($q) {
             $q->withPivot('role', 'status');
-        }]);
+        }, 'defaultLocation']);
+
+        // Set the user's role from the location_user pivot table
+        if ($user->locations && $user->locations->count() > 0) {
+            // Get the first location's role (or you could use defaultLocation if set)
+            $user->role = $user->locations->first()->pivot->role;
+        }
+
         return response()->json([
             'user' => $user
         ]);
